@@ -1560,7 +1560,12 @@ em.search-keyword {
   padding: 0.7em 0.7em 0 0; }
 
 #stoc {
-  line-height: 1em; }
+  line-height: 1em;
+  font-weight: 700; }
+  #stoc .active {
+    color: #0085a1;
+    border-radius: 4px;
+    background-color: #F5F5F5; }
   #stoc .toc {
     padding: 0;
     margin: 0.5em;
