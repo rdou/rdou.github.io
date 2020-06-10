@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /**
  *
  * @package Maupassant
@@ -27,11 +28,12 @@ body {
   font-family: "TIBch", "Classic Grotesque W01", "Helvetica Neue", Arial, "Hiragino Sans GB", "STHeiti", "Microsoft YaHei", "WenQuanYi Micro Hei", SimSun, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 14px; }
+  font-size: 16px; }
 
+/* 设置博客占用的宽度 */
 .body_container {
-  padding: 0 60px;
-  max-width: 1150px;
+  padding: 0 40px;
+  max-width: 70%;
   margin: 0 auto; }
 
 .content_container {
@@ -73,11 +75,12 @@ div {
       height: 0;
       overflow: hidden; }
     #header .site-name #logo {
-      font: bold 38px/1.12 "Times New Roman", Georgia, Times, sans-serif;
+      font: bold 45px/1.12 "Times New Roman", Georgia, Times, sans-serif;
       color: #555; }
       #header .site-name #logo span, #header .site-name #logo:hover {
         color: #777; }
     #header .site-name .description {
+      font-size: 18px;
       margin: .2em 0 0;
       color: #999; }
   #header #nav-menu {
@@ -91,7 +94,7 @@ div {
       padding: 3px 20px 3px;
       line-height: 30px;
       color: #444;
-      font-size: 13px;
+      font-size: 15px;
       border: 1px solid transparent; }
       #header #nav-menu a:hover {
         border-bottom-color: #444; }
@@ -222,7 +225,8 @@ div {
       color: #444; }
   .post .post-content {
     clear: left;
-    font-size: 15px;
+    /* 正文字号 */
+    font-size: 16px;
     line-height: 1.77;
     color: #444;
     padding-top: 15px;
@@ -372,12 +376,12 @@ div {
 
 /* for archive page starts*/
 .post-archive {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 2;
   padding-bottom: .8em; }
   .post-archive h2 {
     margin: 0;
-    font: bold 25px / 1.1 "ff-tisa-web-pro", Cambria, "Times New Roman", Georgia, Times, sans-serif; }
+    font: bold 28px / 1.1 "ff-tisa-web-pro", Cambria, "Times New Roman", Georgia, Times, sans-serif; }
   .post-archive .date {
     padding-right: .7em; }
 
@@ -850,7 +854,7 @@ figure.highlight,
   figure.highlight .line,
   .codeblock .line {
     height: 1.3em;
-    font-size: 13px; }
+    font-size: 14px; }
 
 .gist .line,
 .gist .line-number {
@@ -1521,3 +1525,48 @@ em.search-keyword {
   color: #fff;
   background-color: #999999;
   text-shadow: 0; }
+
+#sidebar-toc {
+  padding-left: 15px;
+  margin-top: 40px;
+  padding-bottom: 20px;
+  word-wrap: break-word; }
+
+.stoc-article {
+  position: absolute;
+  padding: 1em 1em 0 1em;
+  margin-left: 1em;
+  border-left: rgba(88, 88, 88, 0.1) 1px solid; }
+
+.stoc-title {
+  font-size: 150%; }
+
+#sidebar-stoc {
+  width: inherit;
+  line-height: 1em;
+  font-size: 0.9em;
+  float: left;
+  overflow: auto; }
+
+.stoc-fixed {
+  position: fixed;
+  top: 60px;
+  margin-top: 0;
+  max-height: 81%;
+  overflow: hidden;
+  z-index: 1; }
+
+.toc-nav {
+  padding: 0.7em 0.7em 0 0; }
+
+#stoc {
+  line-height: 1em; }
+  #stoc .toc {
+    padding: 0;
+    margin: 0.5em;
+    line-height: 1.8em; }
+    #stoc .toc li {
+      list-style-type: none; }
+  #stoc .toc-child {
+    margin-left: 1em;
+    padding-left: 0; }
