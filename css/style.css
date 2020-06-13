@@ -33,7 +33,7 @@ body {
 /* 设置博客占用的宽度 */
 .body_container {
   padding: 0 40px;
-  max-width: 70%;
+  max-width: 60%;
   margin: 0 auto; }
 
 .content_container {
@@ -372,7 +372,7 @@ div {
   color: #6E7173;
   text-align: center; }
   #footer span {
-    font-size: .9em; }
+    font-size: 16px; }
 
 /* for archive page starts*/
 .post-archive {
@@ -1560,8 +1560,7 @@ em.search-keyword {
   padding: 0.7em 0.7em 0 0; }
 
 #stoc {
-  line-height: 1em;
-  font-weight: 700; }
+  line-height: 1em; }
   #stoc .active {
     color: #0085a1;
     border-radius: 4px;
