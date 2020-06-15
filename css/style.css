@@ -33,7 +33,7 @@ body {
 /* 设置博客占用的宽度 */
 .body_container {
   padding: 0 40px;
-  max-width: 60%;
+  max-width: 80%;
   margin: 0 auto; }
 
 .content_container {
