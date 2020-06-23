@@ -247,9 +247,10 @@ div {
       overflow-wrap: break-word; }
       .post .post-content p code {
         display: inline-block;
-        margin: 0 5px;
-        padding: 0 5px;
-        background: #f7f8f8;
+        margin: 0 1px;
+        padding: 0 1px;
+        background: #e3e3e3;
+        /*#f7f8f8;*/
         font-family: Menlo, Consolas, monospace !important; }
       .post .post-content p a {
         color: #01579f;
@@ -284,9 +285,9 @@ div {
       .post .post-content ul code,
       .post .post-content ol code {
         display: inline-block;
-        margin: 0 5px;
-        padding: 0px 5px;
-        background: #f7f8f8;
+        margin: 0 1px;
+        padding: 0px 1px;
+        background: #e3e3e3;
         font-family: Menlo, Consolas, monospace !important; }
       .post .post-content ul a,
       .post .post-content ol a {
