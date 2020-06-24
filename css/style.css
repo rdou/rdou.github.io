@@ -249,7 +249,9 @@ div {
         display: inline-block;
         margin: 0 1px;
         padding: 0 1px;
-        background: #e3e3e3;
+        font-size: 14px;
+        color: #c7254e;
+        background: #eee;
         /*#f7f8f8;*/
         font-family: Menlo, Consolas, monospace !important; }
       .post .post-content p a {
@@ -287,7 +289,9 @@ div {
         display: inline-block;
         margin: 0 1px;
         padding: 0px 1px;
-        background: #e3e3e3;
+        font-size: 14px;
+        color: #c7254e;
+        background: #eee;
         font-family: Menlo, Consolas, monospace !important; }
       .post .post-content ul a,
       .post .post-content ol a {
