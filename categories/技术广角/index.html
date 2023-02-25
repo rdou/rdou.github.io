@@ -354,6 +354,46 @@
     
     
     <article class="index-post">
+        <a class="abstract-title" href = "/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/" >
+            
+                <span>09. 【Slab】1 - Slab简介以及相关结构体</span>
+        </a>
+        <div class="abstract-content">
+            最近开始学习Slab，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的Slab知识。
+为什么需要Slab关于这点，书上和网上都说了很多，我这里简单地说3点：
+
+可以分配比PAGE_SIZE更小的内存空间，大大地降低了内部碎片；
+效率更高。第一，Slab的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，Slab可以更快地分配和释放经常使用的对象（释放后并不还给伙伴系统，Slab可以之后再使用）；
+对物理缓存更友好，效率更高。Slab分配内存空间时会尽量减少物理缓存的冲突。
+
+相关数据结构Slab是多个结构体共同组成的系统，因此在理解上会有些困难，下图展...
+        </div>
+        <div class="abstract-post-meta">
+            <!-- date  -->
+            <div class="abstract-date">
+                <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/18</span>
+            </div>
+            <!-- tags  -->
+            
+            <div class= abstract-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux 2.6.11">Linux 2.6.11</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "内存管理">内存管理</a>
+    
+</div>
+            
+        </div>
+    </article>
+    
+    
+    
+    
+    
+    
+    <article class="index-post">
         <a class="abstract-title" href = "/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" >
             
                 <span>Socket编程基础8 - 进程池和并发模型</span>
@@ -697,51 +737,6 @@
         </div>
     </article>
     
-    
-    
-    
-    
-    
-    <article class="index-post">
-        <a class="abstract-title" href = "/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/" >
-            
-                <span>Socket编程基础4 - IO多路复用函数总结</span>
-        </a>
-        <div class="abstract-content">
-            <p>这篇文章主要是承接上一篇 - 《Socket编程基础3 - 之I/O多路复用》未完结的内容。上一篇文章主要讲了<code>select()</code>以及多路复用的概念，这一篇文章将详细讲解<code>poll()</code>和<code>epoll()</code>函数以及这3个函数的对比。本篇内容主要来自网络以及《Linux高性能服务器编程》。</p>
-        </div>
-        <div class="abstract-post-meta">
-            <!-- date  -->
-            <div class="abstract-date">
-                <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2020/04/29</span>
-            </div>
-            <!-- tags  -->
-            
-            <div class= abstract-tags >
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "C/C++">C/C++</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux编程">Linux编程</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "UNP">UNP</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "网络编程">网络编程</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "socket">socket</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "I/O模型">I/O模型</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "poll()">poll()</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "epoll()">epoll()</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags = "ET/LT">ET/LT</a>
-    
-</div>
-            
-        </div>
-    </article>
-    
     <!-- paginator  -->
     
     <nav class="page-nav">
@@ -995,9 +990,35 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 15
+        Total : 17
         </div>
         <!-- search  -->
         
@@ -1007,6 +1028,25 @@
     
     
     
+    
+    <div class="archive-year"> 2023 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/18</span><a class="archive-post-title" href= "/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/" >09. 【Slab】1 - Slab简介以及相关结构体</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/03</span><a class="archive-post-title" href= "/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/" >重新出发</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
     
     <div class="archive-year"> 2020 </div>
     <ul class="year-list">
@@ -1109,6 +1149,12 @@
         <div class="sidebar-panel-tags">
     <div class="sidebar-tags-name">
     
+        <span class="sidebar-tag-name" data-tags="Linux内核"><span class="iconfont-archer">&#xe606;</span>Linux内核</span>
+    
+        <span class="sidebar-tag-name" data-tags="Linux 2.6.11"><span class="iconfont-archer">&#xe606;</span>Linux 2.6.11</span>
+    
+        <span class="sidebar-tag-name" data-tags="内存管理"><span class="iconfont-archer">&#xe606;</span>内存管理</span>
+    
         <span class="sidebar-tag-name" data-tags="C/C++"><span class="iconfont-archer">&#xe606;</span>C/C++</span>
     
         <span class="sidebar-tag-name" data-tags="栈"><span class="iconfont-archer">&#xe606;</span>栈</span>
@@ -1117,19 +1163,19 @@
     
         <span class="sidebar-tag-name" data-tags="Linux编程"><span class="iconfont-archer">&#xe606;</span>Linux编程</span>
     
+        <span class="sidebar-tag-name" data-tags="文件I/O"><span class="iconfont-archer">&#xe606;</span>文件I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="标准I/O"><span class="iconfont-archer">&#xe606;</span>标准I/O</span>
+    
         <span class="sidebar-tag-name" data-tags="多进程"><span class="iconfont-archer">&#xe606;</span>多进程</span>
     
         <span class="sidebar-tag-name" data-tags="IPC"><span class="iconfont-archer">&#xe606;</span>IPC</span>
     
         <span class="sidebar-tag-name" data-tags="管道"><span class="iconfont-archer">&#xe606;</span>管道</span>
     
-        <span class="sidebar-tag-name" data-tags="信号量"><span class="iconfont-archer">&#xe606;</span>信号量</span>
-    
-        <span class="sidebar-tag-name" data-tags="文件I/O"><span class="iconfont-archer">&#xe606;</span>文件I/O</span>
-    
-        <span class="sidebar-tag-name" data-tags="标准I/O"><span class="iconfont-archer">&#xe606;</span>标准I/O</span>
-    
         <span class="sidebar-tag-name" data-tags="共享内存"><span class="iconfont-archer">&#xe606;</span>共享内存</span>
+    
+        <span class="sidebar-tag-name" data-tags="信号量"><span class="iconfont-archer">&#xe606;</span>信号量</span>
     
         <span class="sidebar-tag-name" data-tags="UNP"><span class="iconfont-archer">&#xe606;</span>UNP</span>
     
@@ -1141,17 +1187,17 @@
     
         <span class="sidebar-tag-name" data-tags="I/O模型"><span class="iconfont-archer">&#xe606;</span>I/O模型</span>
     
-        <span class="sidebar-tag-name" data-tags="select()"><span class="iconfont-archer">&#xe606;</span>select()</span>
-    
-        <span class="sidebar-tag-name" data-tags="定时器"><span class="iconfont-archer">&#xe606;</span>定时器</span>
-    
-        <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》"><span class="iconfont-archer">&#xe606;</span>《Linux高性能服务器编程》</span>
-    
         <span class="sidebar-tag-name" data-tags="poll()"><span class="iconfont-archer">&#xe606;</span>poll()</span>
     
         <span class="sidebar-tag-name" data-tags="epoll()"><span class="iconfont-archer">&#xe606;</span>epoll()</span>
     
         <span class="sidebar-tag-name" data-tags="ET/LT"><span class="iconfont-archer">&#xe606;</span>ET/LT</span>
+    
+        <span class="sidebar-tag-name" data-tags="select()"><span class="iconfont-archer">&#xe606;</span>select()</span>
+    
+        <span class="sidebar-tag-name" data-tags="定时器"><span class="iconfont-archer">&#xe606;</span>定时器</span>
+    
+        <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》"><span class="iconfont-archer">&#xe606;</span>《Linux高性能服务器编程》</span>
     
         <span class="sidebar-tag-name" data-tags="进程池"><span class="iconfont-archer">&#xe606;</span>进程池</span>
     
@@ -1191,6 +1237,8 @@ jsonContent:
     <div class="sidebar-categories-name">
     
         <span class="sidebar-category-name" data-categories="技术广角"><span class="iconfont-archer">&#xe60a;</span>技术广角</span>
+    
+        <span class="sidebar-category-name" data-categories="个人随笔"><span class="iconfont-archer">&#xe60a;</span>个人随笔</span>
     
     </div>
     <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
