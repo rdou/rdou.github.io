@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" >
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+    <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="这篇文章既不介绍什么是信号量，也不解释为什么要用信号量，这些都是可以网上随便搜得到的，这篇文章主要讲解如何使用Linux下的信号量。Linux下的信号量是用系统调用直接实现的，它既可以用作binary semaphore也可以用作counting semaphore。为方便起见，这里我用binary semaphore作为例子进行讲解。Linux的信号量使用了3个系统调用 - semget(),">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux编程基础3 - 进程间通信(信号量)">
+<meta property="og:url" content="http://example.com/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="这篇文章既不介绍什么是信号量，也不解释为什么要用信号量，这些都是可以网上随便搜得到的，这篇文章主要讲解如何使用Linux下的信号量。Linux下的信号量是用系统调用直接实现的，它既可以用作binary semaphore也可以用作counting semaphore。为方便起见，这里我用binary semaphore作为例子进行讲解。Linux的信号量使用了3个系统调用 - semget(),">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-06-22T07:58:10.000Z">
+<meta property="article:modified_time" content="2020-06-25T23:34:43.000Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="C&#x2F;C++">
+<meta property="article:tag" content="Linux编程">
+<meta property="article:tag" content="多进程">
+<meta property="article:tag" content="IPC">
+<meta property="article:tag" content="信号量">
+<meta name="twitter:card" content="summary">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    
+    <title>Linux编程基础3 - 进程间通信(信号量) · 从零到负一</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href= "/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <link rel="stylesheet" href= "/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href= "/assets/touxiang.png" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script" />
+    <link rel="preload" href="/scripts/main.js" as="script" />
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >从零到负一</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">Linux编程基础3 - 进程间通信(信号量)</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>从零到负一</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:50vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            Linux编程基础3 - 进程间通信(信号量)
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "C/C++">C/C++</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux编程">Linux编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "多进程">多进程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "IPC">IPC</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "信号量">信号量</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>Word count: <span class="post-count word-count">1.5k</span>Reading time: <span class="post-count reading-time">5 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2020/06/22</span>
+                    
+                    <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                        <span class="iconfont-archer">&#xe602;</span>
+                        <span id="busuanzi_value_page_pv"></span>
+                    </span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+  console.log("userAgent:" + browser.versions.userAgent);
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded');
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <p>这篇文章既不介绍什么是信号量，也不解释为什么要用信号量，这些都是可以网上随便搜得到的，这篇文章主要讲解如何使用Linux下的信号量。Linux下的信号量是用系统调用直接实现的，它既可以用作<code>binary semaphore</code>也可以用作<code>counting semaphore</code>。为方便起见，这里我用<code>binary semaphore</code>作为例子进行讲解。Linux的信号量使用了3个系统调用 - <code>semget()</code>, <code>semctl()</code>和<code>semop()</code>。因为是系统调用而不是封装好的API，因此使用起来还是要麻烦些，我们下面就来看看如何使用这些系统调用。</p>
+<a id="more"></a>
+
+<h2 id="相关系统调用"><a href="#相关系统调用" class="headerlink" title="相关系统调用"></a>相关系统调用</h2><h3 id="semget"><a href="#semget" class="headerlink" title="semget()"></a>semget()</h3><p><code>semget()</code>函数既可以用于获取之前创建的信号量集合，也可以用于创建新的信号量集合。<code>semget()</code>的函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 成功返回信号量集合的标识符，否则返回-1</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">semget</span><span class="params">(<span class="keyword">key_t</span> key, <span class="keyword">int</span> nsems, <span class="keyword">int</span> semflg)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>key</code>是绑定在信号量集合上的，我们可以用<code>key</code>来寻找已经创建的信号量集合，或者用于创建并绑定新的信号量集合。注意，<code>key</code>和函数的返回值(信号量集合)不是一样的。<code>nsems</code>表示该信号量集合有多少个信号量，如果用信号量来创建<code>binary semaphore</code>，我们只需要将<code>nsems</code>设置为1。<code>semflg</code>是设置信号量集合的标志位，其中最低9位是信号量集合的访问权限(和文件一样，3个8进制数字，比如0777)。其他位和文件创建的标志位类似，比如<code>IPC_CREAT</code>是创建新的信号量集合(文件是<code>O_CREAT</code>)，在使用信号量前，我们都需要创建信号量集合。</p>
+<p>在调用该系统调用后，与信号量集合绑定的数据结构<code>semid_ds</code>也被初始化。</p>
+<h3 id="semop"><a href="#semop" class="headerlink" title="semop()"></a>semop()</h3><p><code>semop()</code>用于操作信号量，简单来说就是对信号量的计数器进行加减。函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">semop</span><span class="params">(<span class="keyword">int</span> semid, struct sembuf *sops, <span class="keyword">size_t</span> nsops)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>semid</code>是信号量集合的标识符，注意，这不是<code>semget()</code>中的<code>key</code>而是这个函数的返回值。<code>nsops</code>是有多少个信号量需要被操作，在我们的例子中只有1个信号量需要被操作。<code>sops</code>是对信号量操作的具体命令，它是一个<code>struct sembuf</code>类型的结构体，一共有<code>nsops</code>个这样的结构体：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">unsigned</span> <span class="keyword">short</span> sem_num;  <span class="comment">/* semaphore number */</span></span><br><span class="line"><span class="keyword">short</span>          sem_op;   <span class="comment">/* semaphore operation */</span></span><br><span class="line"><span class="keyword">short</span>          sem_flg;  <span class="comment">/* operation flags */</span></span><br></pre></td></tr></table></figure>
+<p><code>sem_num</code>是从0开始计数的，表示是第几个信号量；<code>sem_flg</code>可以选择<code>IPC_NOWAIT</code>和<code>SEM_UNDO</code>，<code>SEM_UNDO</code>表示在进程结束后，内核会自动释放没有主动释放的信号量。<code>sops</code>是按照数组的顺序执行的，并且是原子的，如果所有的信号量不能同时操作，那么就不进行操作。</p>
+<p><code>sem_op</code>的使用很简单，但具体如何设置、不同设置有什么不同却比较麻烦。在<code>binary semaphore</code>的例子中，<code>sem_op</code>设置为1就是信号量计数器加1；设置为-1就是信号量计数器减1，下面具体讲讲<code>sem_op</code>设置背后的故事。</p>
+<p>除了上面提到的<code>sembuf</code>结构体，每个信号量还对应一系列变量：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">unsigned</span> <span class="keyword">short</span>  semval;   <span class="comment">/* semaphore value */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">short</span>  semzcnt;  <span class="comment">/* # waiting for zero */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">short</span>  semncnt;  <span class="comment">/* # waiting for increase */</span></span><br><span class="line"><span class="keyword">pid_t</span>           sempid;   <span class="comment">/* process ID of [the] last operation */</span></span><br></pre></td></tr></table></figure>
+<p>之前提到的信号量计数器就是<code>semval</code>，<code>semzcnt</code>是等待<code>semval</code>为0的进程数，<code>semncnt</code>是等待<code>semval</code>增加的进程数。<code>semop()</code>对信号量的操作都会改变这些变量。</p>
+<p>如果<code>sem_op</code>设置为正数，那么每次操作后<code>semval</code>将变成<code>semval + sem_op</code>；如果<code>sem_flg</code>设置了<code>SEM_UNDO</code>，那么<code>semadj</code>将变成<code>semadj - sem_op</code>。进程需要有写的权限才能修改信号量。</p>
+<p>如果<code>sem_op</code>设置为负数，情况要复杂些：</p>
+<ol>
+<li>如果<code>abs(sem_op)</code>小于等于<code>semval</code>，那么<code>semval</code>将变成<code>semval - abs(sem_op)</code>；如果<code>sem_flg</code>设置了<code>SEM_UNDO</code>，那么<code>semadj</code>将变成<code>semadj + abs(sem_op)</code>；</li>
+<li>如果<code>abs(sem_op)</code>大于<code>semval</code>并且<code>sem_flg</code>设置了<code>IPC_NOWAIT</code>，那么将返回错误码<code>EAGAIN </code>，并且<code>sem_op</code>的操作不会进行；</li>
+<li>如果2中没有设置<code>IPC_NOWAIT</code>，那么<code>semval</code>将变成<code>semval - abs(sem_op)</code>，同时<code>semncnt</code> 变成<code>semncnt + 1</code>，并且进程会进入<code>sleep</code>状态。当<code>semval &gt;= abs(sem_op)</code>时，进程会被唤醒。</li>
+</ol>
+<p>其他具体细节请参考<code>man semop</code> 。</p>
+<p>从加锁和解锁的角度进行思考，当<code>semval = 0</code>时，如果操作是<code>sem_op = -1</code>，那么<code>semval</code>将变成-1，因此进程进入睡眠状态：这就是加锁的操作；同理，<code>sem_op = 1</code>是解锁的操作。</p>
+<h3 id="semctl"><a href="#semctl" class="headerlink" title="semctl()"></a>semctl()</h3><p>通过上面两个系统调用，我们知道如何创建信号量以及如何操作信号量，下面这个系统调用可以初始化信号量以及删除信号量。我们先来看看<code>semctl()</code>的函数原型：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">semctl</span><span class="params">(<span class="keyword">int</span> semid, <span class="keyword">int</span> semnum, <span class="keyword">int</span> cmd, ...)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>semctl()</code>支持的命令有很多，这里我们主要介绍两个 - <code>IPC_RMID</code>和<code>SETVAL</code>。<code>semid</code>是信号量集合的索引，<code>semnum</code>是其中第几个信号量(从0开始)，<code>cmd</code>就是命令。这个函数是可变长度参数，有些命令是4个参数，第4个参数是<code>union semun</code>，这个<code>union</code>定义如下，注释中注明了哪些命令要用这个<code>union</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">union</span> <span class="title">semun</span> &#123;</span></span><br><span class="line">    <span class="keyword">int</span>              val;    <span class="comment">/* Value for SETVAL */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">semid_ds</span> *<span class="title">buf</span>;</span>    <span class="comment">/* Buffer for IPC_STAT, IPC_SET */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">short</span>  *<span class="built_in">array</span>;  <span class="comment">/* Array for GETALL, SETALL */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">seminfo</span>  *__<span class="title">buf</span>;</span>  <span class="comment">/* Buffer for IPC_INFO (Linux-specific) */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>使用<code>SETVAL</code>命令时，我们就是通过<code>val</code>给<code>semval</code>赋值，用于初始化信号量。我们这里看看如何使用<code>semctl()</code>来初始化和删除信号量：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 初始化信号量</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">set_sem</span><span class="params">(<span class="keyword">int</span> sem_id)</span> </span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">union</span> <span class="title">semun</span> <span class="title">sem_union</span>;</span>  </span><br><span class="line">    sem_union.val = <span class="number">1</span>;  </span><br><span class="line">    <span class="keyword">if</span>(semctl(sem_id, <span class="number">0</span>, SETVAL, sem_union) == <span class="number">-1</span>) &#123; </span><br><span class="line">        <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;Failed to set sem\n&quot;</span>);  </span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;  </span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;  </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 删除信号量  </span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">del_sem</span><span class="params">(<span class="keyword">int</span> sem_id)</span> </span>&#123;  </span><br><span class="line">    <span class="class"><span class="keyword">union</span> <span class="title">semun</span> <span class="title">sem_union</span>;</span>  </span><br><span class="line">    <span class="keyword">if</span>(semctl(sem_id, <span class="number">0</span>, IPC_RMID, sem_union) == <span class="number">-1</span>)  </span><br><span class="line">        <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;Failed to delete sem, sem has been del.\n&quot;</span>);  </span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
+<h2 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h2><p>实例请参考<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/383a7d87a987">从 0 开始学习 Linux 系列之「24.信号量 semaphore」</a>和<a target="_blank" rel="noopener" href="https://blog.csdn.net/mybelief321/article/details/9086151">Linux进程间通信(六)—信号量通信之semget()、semctl()、semop()及其基础实验</a>，上面的代码也来自这两篇博客。</p>
+
+    </article>
+    <!-- license  -->
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href= "/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" title= "Linux编程基础4 - 进程间通信(共享内存)">
+                    <div class="nextTitle">Linux编程基础4 - 进程间通信(共享内存)</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/" title= "Linux编程基础2 - 进程间通信(匿名管道)">
+                    <div class="prevTitle">Linux编程基础2 - 进程间通信(匿名管道)</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- gitalk评论 -->
+
+    <!-- utteranc评论 -->
+
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    <!-- 评论 -->
+</main>
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- 不蒜子  -->
+    
+    <div class="busuanzi-container">
+    
+     
+    <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+    
+    </div>
+    
+</footer>
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:50vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="toc-number">1.</span> <span class="toc-text">相关系统调用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#semget"><span class="toc-number">1.1.</span> <span class="toc-text">semget()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#semop"><span class="toc-number">1.2.</span> <span class="toc-text">semop()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#semctl"><span class="toc-number">1.3.</span> <span class="toc-text">semctl()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B"><span class="toc-number">2.</span> <span class="toc-text">实例</span></a></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 15
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/03</span><a class="archive-post-title" href= "/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" >Socket编程基础8 - 进程池和并发模型</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/26</span><a class="archive-post-title" href= "/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/24</span><a class="archive-post-title" href= "/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础4 - 进程间通信(共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/22</span><a class="archive-post-title" href= "/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/" >Linux编程基础3 - 进程间通信(信号量)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/21</span><a class="archive-post-title" href= "/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/" >Linux编程基础2 - 进程间通信(匿名管道)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/" >Linux编程基础1 - I/O总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/13</span><a class="archive-post-title" href= "/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/" >Socket编程基础7 - 定时器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/12</span><a class="archive-post-title" href= "/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/" >Socket编程基础6 - 高级IO函数</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/15</span><a class="archive-post-title" href= "/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/" >Socket编程基础5 - epoll实战</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/29</span><a class="archive-post-title" href= "/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/" >Socket编程基础4 - IO多路复用函数总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span><a class="archive-post-title" href= "/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/" >Socket编程基础3 - IO多路复用基础</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/" >Socket编程基础2 - 基本回射服务实例</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/" >Socket编程基础1 - 套接字和TCP/IP入门</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2017 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/09</span><a class="archive-post-title" href= "/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/" >一文搞懂C语言回调函数</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2016 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/31</span><a class="archive-post-title" href= "/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/" >C函数调用过程原理及函数栈帧分析(X86)</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="C/C++"><span class="iconfont-archer">&#xe606;</span>C/C++</span>
+    
+        <span class="sidebar-tag-name" data-tags="栈"><span class="iconfont-archer">&#xe606;</span>栈</span>
+    
+        <span class="sidebar-tag-name" data-tags="X86汇编"><span class="iconfont-archer">&#xe606;</span>X86汇编</span>
+    
+        <span class="sidebar-tag-name" data-tags="Linux编程"><span class="iconfont-archer">&#xe606;</span>Linux编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="多进程"><span class="iconfont-archer">&#xe606;</span>多进程</span>
+    
+        <span class="sidebar-tag-name" data-tags="IPC"><span class="iconfont-archer">&#xe606;</span>IPC</span>
+    
+        <span class="sidebar-tag-name" data-tags="管道"><span class="iconfont-archer">&#xe606;</span>管道</span>
+    
+        <span class="sidebar-tag-name" data-tags="信号量"><span class="iconfont-archer">&#xe606;</span>信号量</span>
+    
+        <span class="sidebar-tag-name" data-tags="文件I/O"><span class="iconfont-archer">&#xe606;</span>文件I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="标准I/O"><span class="iconfont-archer">&#xe606;</span>标准I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="共享内存"><span class="iconfont-archer">&#xe606;</span>共享内存</span>
+    
+        <span class="sidebar-tag-name" data-tags="UNP"><span class="iconfont-archer">&#xe606;</span>UNP</span>
+    
+        <span class="sidebar-tag-name" data-tags="网络编程"><span class="iconfont-archer">&#xe606;</span>网络编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="socket"><span class="iconfont-archer">&#xe606;</span>socket</span>
+    
+        <span class="sidebar-tag-name" data-tags="回射服务"><span class="iconfont-archer">&#xe606;</span>回射服务</span>
+    
+        <span class="sidebar-tag-name" data-tags="I/O模型"><span class="iconfont-archer">&#xe606;</span>I/O模型</span>
+    
+        <span class="sidebar-tag-name" data-tags="select()"><span class="iconfont-archer">&#xe606;</span>select()</span>
+    
+        <span class="sidebar-tag-name" data-tags="定时器"><span class="iconfont-archer">&#xe606;</span>定时器</span>
+    
+        <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》"><span class="iconfont-archer">&#xe606;</span>《Linux高性能服务器编程》</span>
+    
+        <span class="sidebar-tag-name" data-tags="poll()"><span class="iconfont-archer">&#xe606;</span>poll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="epoll()"><span class="iconfont-archer">&#xe606;</span>epoll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="ET/LT"><span class="iconfont-archer">&#xe606;</span>ET/LT</span>
+    
+        <span class="sidebar-tag-name" data-tags="进程池"><span class="iconfont-archer">&#xe606;</span>进程池</span>
+    
+        <span class="sidebar-tag-name" data-tags="并发模型"><span class="iconfont-archer">&#xe606;</span>并发模型</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="技术广角"><span class="iconfont-archer">&#xe60a;</span>技术广角</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "John Doe"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+</html>
+
+

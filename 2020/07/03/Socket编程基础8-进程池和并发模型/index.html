@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" >
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+    <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="这一章节我其实不想写，因为我对并发模型还不是很熟悉，只是想分析下《Linux高性能服务器编程》中的几个例子。 半同步&#x2F;半异步进程池实例进程池通过先创建一定数量的进程，从而减少程序运行时创建进程的开销。这里的半同步&#x2F;半异步并不是指I&#x2F;O的同步和异步，而是指并发模式中的同步&#x2F;异步。简单来说，同步就是顺序运行的程序，异步就是非顺序运行的程序，比如处理信号事件等。 半同步&#x2F;半异步指的是在该模型中，有部分进">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Socket编程基础8 - 进程池和并发模型">
+<meta property="og:url" content="http://example.com/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="这一章节我其实不想写，因为我对并发模型还不是很熟悉，只是想分析下《Linux高性能服务器编程》中的几个例子。 半同步&#x2F;半异步进程池实例进程池通过先创建一定数量的进程，从而减少程序运行时创建进程的开销。这里的半同步&#x2F;半异步并不是指I&#x2F;O的同步和异步，而是指并发模式中的同步&#x2F;异步。简单来说，同步就是顺序运行的程序，异步就是非顺序运行的程序，比如处理信号事件等。 半同步&#x2F;半异步指的是在该模型中，有部分进">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.imgur.com/XQnbh07.png">
+<meta property="og:image" content="https://i.imgur.com/JUhKIXw.png">
+<meta property="article:published_time" content="2020-07-04T06:03:15.000Z">
+<meta property="article:modified_time" content="2020-07-04T07:42:40.000Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="C&#x2F;C++">
+<meta property="article:tag" content="Linux编程">
+<meta property="article:tag" content="网络编程">
+<meta property="article:tag" content="socket">
+<meta property="article:tag" content="《Linux高性能服务器编程》">
+<meta property="article:tag" content="进程池">
+<meta property="article:tag" content="并发模型">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/XQnbh07.png">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    
+    <title>Socket编程基础8 - 进程池和并发模型 · 从零到负一</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href= "/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <link rel="stylesheet" href= "/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href= "/assets/touxiang.png" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script" />
+    <link rel="preload" href="/scripts/main.js" as="script" />
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >从零到负一</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">Socket编程基础8 - 进程池和并发模型</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>从零到负一</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:50vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            Socket编程基础8 - 进程池和并发模型
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "C/C++">C/C++</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux编程">Linux编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "网络编程">网络编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "socket">socket</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "《Linux高性能服务器编程》">《Linux高性能服务器编程》</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "进程池">进程池</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "并发模型">并发模型</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>Word count: <span class="post-count word-count">1.9k</span>Reading time: <span class="post-count reading-time">9 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2020/07/03</span>
+                    
+                    <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                        <span class="iconfont-archer">&#xe602;</span>
+                        <span id="busuanzi_value_page_pv"></span>
+                    </span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+  console.log("userAgent:" + browser.versions.userAgent);
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded');
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <p>这一章节我其实不想写，因为我对并发模型还不是很熟悉，只是想分析下《Linux高性能服务器编程》中的几个例子。</p>
+<h2 id="半同步-半异步进程池实例"><a href="#半同步-半异步进程池实例" class="headerlink" title="半同步/半异步进程池实例"></a>半同步/半异步进程池实例</h2><p>进程池通过先创建一定数量的进程，从而减少程序运行时创建进程的开销。这里的半同步/半异步并不是指I/O的同步和异步，而是指并发模式中的同步/异步。简单来说，同步就是顺序运行的程序，异步就是非顺序运行的程序，比如处理信号事件等。</p>
+<p>半同步/半异步指的是在该模型中，有部分进程是同步，有部分进程是异步的。比如图1这个模型：</p>
+<p><img src="https://i.imgur.com/XQnbh07.png"></p>
+<center>图1. 半同步/半异步进程模型</center>
+
+<p>主线程/进程是异步的，它会异步地接收客户端发送的连接、数据传输请求，然后将其放入队列，子线程/进程会通过队列同步地获取这些请求并进行处理。图2是一种高效的半同步/半异步进程模型(实际上该模型全部都是异步了)：</p>
+<p><img src="https://i.imgur.com/JUhKIXw.png"></p>
+<center>图2. 高效的半同步/半异步进程模型</center>
+
+<p>在这个模型中，主线程/进程只负责监听是否有新的连接到来，其它所有的工作都由子线程/进程来完成(包括数据传输的请求)。</p>
+<h3 id="代码分析"><a href="#代码分析" class="headerlink" title="代码分析"></a>代码分析</h3><p>重要部分的代码我都添加注释了，这里简单讲讲不同进程的工作。</p>
+<p>进程池创建时会创建若干个子进程。主进程只监听客户端连接的请求，收到请求后，选择一个可用的进程，通过管道发送请求信息。子进程收到后，调用<code>accept()</code>函数完成连接。如果客户端需要对建立好的连接发送信息，主进程是不会收到请求的，只有建立连接的子进程才会收到请求并作相应处理。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br><span class="line">347</span><br><span class="line">348</span><br><span class="line">349</span><br><span class="line">350</span><br><span class="line">351</span><br><span class="line">352</span><br><span class="line">353</span><br><span class="line">354</span><br><span class="line">355</span><br><span class="line">356</span><br><span class="line">357</span><br><span class="line">358</span><br><span class="line">359</span><br><span class="line">360</span><br><span class="line">361</span><br><span class="line">362</span><br><span class="line">363</span><br><span class="line">364</span><br><span class="line">365</span><br><span class="line">366</span><br><span class="line">367</span><br><span class="line">368</span><br><span class="line">369</span><br><span class="line">370</span><br><span class="line">371</span><br><span class="line">372</span><br><span class="line">373</span><br><span class="line">374</span><br><span class="line">375</span><br><span class="line">376</span><br><span class="line">377</span><br><span class="line">378</span><br><span class="line">379</span><br><span class="line">380</span><br><span class="line">381</span><br><span class="line">382</span><br><span class="line">383</span><br><span class="line">384</span><br><span class="line">385</span><br><span class="line">386</span><br><span class="line">387</span><br><span class="line">388</span><br><span class="line">389</span><br><span class="line">390</span><br><span class="line">391</span><br><span class="line">392</span><br><span class="line">393</span><br><span class="line">394</span><br><span class="line">395</span><br><span class="line">396</span><br><span class="line">397</span><br><span class="line">398</span><br><span class="line">399</span><br><span class="line">400</span><br><span class="line">401</span><br><span class="line">402</span><br><span class="line">403</span><br><span class="line">404</span><br><span class="line">405</span><br><span class="line">406</span><br><span class="line">407</span><br><span class="line">408</span><br><span class="line">409</span><br><span class="line">410</span><br><span class="line">411</span><br><span class="line">412</span><br><span class="line">413</span><br><span class="line">414</span><br><span class="line">415</span><br><span class="line">416</span><br><span class="line">417</span><br><span class="line">418</span><br><span class="line">419</span><br><span class="line">420</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> PROCESSPOOL_H</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PROCESSPOOL_H</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;netinet/in.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;assert.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;errno.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/epoll.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/stat.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">process</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    process() : m_pid( <span class="number">-1</span> )&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">pid_t</span> m_pid;</span><br><span class="line">    <span class="keyword">int</span> m_pipefd[<span class="number">2</span>];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">typename</span> T &gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">processpool</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="comment">// 只能使用create()创建进程池</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    processpool( <span class="keyword">int</span> listenfd, <span class="keyword">int</span> process_number = <span class="number">8</span> );</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> processpool&lt; T &gt;* <span class="title">create</span><span class="params">( <span class="keyword">int</span> listenfd, <span class="keyword">int</span> process_number = <span class="number">8</span> )</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span>( !m_instance )</span><br><span class="line">        &#123;</span><br><span class="line">            m_instance = <span class="keyword">new</span> processpool&lt; T &gt;( listenfd, process_number );</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> m_instance;</span><br><span class="line">    &#125;</span><br><span class="line">    ~processpool()</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">delete</span> [] m_sub_process;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">run</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setup_sig_pipe</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">run_parent</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">run_child</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">int</span> MAX_PROCESS_NUMBER = <span class="number">16</span>;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">int</span> USER_PER_PROCESS = <span class="number">65536</span>;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">int</span> MAX_EVENT_NUMBER = <span class="number">10000</span>;</span><br><span class="line">    <span class="keyword">int</span> m_process_number;</span><br><span class="line">    <span class="keyword">int</span> m_idx;              <span class="comment">// 进程在进程池中的的id(主进程是-1)</span></span><br><span class="line">    <span class="keyword">int</span> m_epollfd;          <span class="comment">// epoll文件描述符</span></span><br><span class="line">    <span class="keyword">int</span> m_listenfd;         <span class="comment">// 监听socket</span></span><br><span class="line">    <span class="keyword">int</span> m_stop;</span><br><span class="line">    process* m_sub_process; <span class="comment">// 存储子进程信息的数组</span></span><br><span class="line">    <span class="keyword">static</span> processpool&lt; T &gt;* m_instance;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">typename</span> T &gt;</span><br><span class="line">processpool&lt; T &gt;* processpool&lt; T &gt;::m_instance = <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 用于信号和进程通信的管道</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">int</span> sig_pipefd[<span class="number">2</span>];</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">setnonblocking</span><span class="params">( <span class="keyword">int</span> fd )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> old_option = fcntl( fd, F_GETFL );</span><br><span class="line">    <span class="keyword">int</span> new_option = old_option | O_NONBLOCK;</span><br><span class="line">    fcntl( fd, F_SETFL, new_option );</span><br><span class="line">    <span class="keyword">return</span> old_option;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">addfd</span><span class="params">( <span class="keyword">int</span> epollfd, <span class="keyword">int</span> fd )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    epoll_event event;</span><br><span class="line">    event.data.fd = fd;</span><br><span class="line">    event.events = EPOLLIN | EPOLLET;</span><br><span class="line">    epoll_ctl( epollfd, EPOLL_CTL_ADD, fd, &amp;event );</span><br><span class="line">    setnonblocking( fd );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">removefd</span><span class="params">( <span class="keyword">int</span> epollfd, <span class="keyword">int</span> fd )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    epoll_ctl( epollfd, EPOLL_CTL_DEL, fd, <span class="number">0</span> );</span><br><span class="line">    close( fd );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">sig_handler</span><span class="params">( <span class="keyword">int</span> sig )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> save_errno = errno;</span><br><span class="line">    <span class="keyword">int</span> msg = sig;</span><br><span class="line">    send( sig_pipefd[<span class="number">1</span>], ( <span class="keyword">char</span>* )&amp;msg, <span class="number">1</span>, <span class="number">0</span> );</span><br><span class="line">    errno = save_errno;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">addsig</span><span class="params">( <span class="keyword">int</span> sig, <span class="keyword">void</span>( handler )(<span class="keyword">int</span>), <span class="keyword">bool</span> restart = <span class="literal">true</span> )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sigaction</span> <span class="title">sa</span>;</span></span><br><span class="line">    <span class="built_in">memset</span>( &amp;sa, <span class="string">&#x27;\0&#x27;</span>, <span class="keyword">sizeof</span>( sa ) );</span><br><span class="line">    sa.sa_handler = handler;</span><br><span class="line">    <span class="keyword">if</span>( restart )</span><br><span class="line">    &#123;</span><br><span class="line">        sa.sa_flags |= SA_RESTART;</span><br><span class="line">    &#125;</span><br><span class="line">    sigfillset( &amp;sa.sa_mask );</span><br><span class="line">    assert( sigaction( sig, &amp;sa, <span class="literal">NULL</span> ) != <span class="number">-1</span> );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">typename</span> T &gt;</span><br><span class="line">processpool&lt; T &gt;::processpool( <span class="keyword">int</span> listenfd, <span class="keyword">int</span> process_number )</span><br><span class="line">    : m_listenfd( listenfd ), m_process_number( process_number ), m_idx( <span class="number">-1</span> ), m_stop( <span class="literal">false</span> )</span><br><span class="line">&#123;</span><br><span class="line">    assert( ( process_number &gt; <span class="number">0</span> ) &amp;&amp; ( process_number &lt;= MAX_PROCESS_NUMBER ) );</span><br><span class="line"></span><br><span class="line">    m_sub_process = <span class="keyword">new</span> process[ process_number ];</span><br><span class="line">    assert( m_sub_process );</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span>( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; process_number; ++i )</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 每个子进程都创建一个用于双向通信的管道 </span></span><br><span class="line">        <span class="keyword">int</span> ret = socketpair( PF_UNIX, SOCK_STREAM, <span class="number">0</span>, m_sub_process[i].m_pipefd );</span><br><span class="line">        assert( ret == <span class="number">0</span> );</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 创建子进程</span></span><br><span class="line">        m_sub_process[i].m_pid = fork();</span><br><span class="line">        assert( m_sub_process[i].m_pid &gt;= <span class="number">0</span> );</span><br><span class="line">        <span class="keyword">if</span>( m_sub_process[i].m_pid &gt; <span class="number">0</span> )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// 主进程关闭pipdf[1]，只保留pipfd[0]用于通信 </span></span><br><span class="line">            close( m_sub_process[i].m_pipefd[<span class="number">1</span>] );</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// 子进程关闭pipdf[0]，只保留pipfd[1]用于通信 </span></span><br><span class="line">            close( m_sub_process[i].m_pipefd[<span class="number">0</span>] );</span><br><span class="line">            <span class="comment">// 更新进程在进程池中的id </span></span><br><span class="line">            m_idx = i;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">typename</span> T &gt;</span><br><span class="line"><span class="keyword">void</span> processpool&lt; T &gt;::setup_sig_pipe()</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 创建epoll文件描述符并将信号添加进去</span></span><br><span class="line">    m_epollfd = epoll_create( <span class="number">5</span> );</span><br><span class="line">    assert( m_epollfd != <span class="number">-1</span> );</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> ret = socketpair( PF_UNIX, SOCK_STREAM, <span class="number">0</span>, sig_pipefd );</span><br><span class="line">    assert( ret != <span class="number">-1</span> );</span><br><span class="line"></span><br><span class="line">    setnonblocking( sig_pipefd[<span class="number">1</span>] );</span><br><span class="line">    addfd( m_epollfd, sig_pipefd[<span class="number">0</span>] );</span><br><span class="line"></span><br><span class="line">    addsig( SIGCHLD, sig_handler );</span><br><span class="line">    addsig( SIGTERM, sig_handler );</span><br><span class="line">    addsig( SIGINT, sig_handler );</span><br><span class="line">    addsig( SIGPIPE, SIG_IGN );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">typename</span> T &gt;</span><br><span class="line"><span class="keyword">void</span> processpool&lt; T &gt;::run()</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 根据进程池中的进程id，运行不同的进程程序</span></span><br><span class="line">    <span class="keyword">if</span>( m_idx != <span class="number">-1</span> )</span><br><span class="line">    &#123;</span><br><span class="line">        run_child();</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    run_parent();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">typename</span> T &gt;</span><br><span class="line"><span class="keyword">void</span> processpool&lt; T &gt;::run_child()</span><br><span class="line">&#123;</span><br><span class="line">    setup_sig_pipe();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> pipefd = m_sub_process[m_idx].m_pipefd[ <span class="number">1</span> ];</span><br><span class="line">    addfd( m_epollfd, pipefd );</span><br><span class="line"></span><br><span class="line">    epoll_event events[ MAX_EVENT_NUMBER ];</span><br><span class="line">    T* users = <span class="keyword">new</span> T [ USER_PER_PROCESS ];</span><br><span class="line">    assert( users );</span><br><span class="line">    <span class="keyword">int</span> number = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> ret = <span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>( ! m_stop )</span><br><span class="line">    &#123;</span><br><span class="line">        number = epoll_wait( m_epollfd, events, MAX_EVENT_NUMBER, <span class="number">-1</span> );</span><br><span class="line">        <span class="keyword">if</span> ( ( number &lt; <span class="number">0</span> ) &amp;&amp; ( errno != EINTR ) )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">printf</span>( <span class="string">&quot;epoll failure\n&quot;</span> );</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> ( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; number; i++ )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">int</span> sockfd = events[i].data.fd;</span><br><span class="line">            <span class="comment">// 接收到主进程的信息(有新的连接到来) </span></span><br><span class="line">            <span class="keyword">if</span>( ( sockfd == pipefd ) &amp;&amp; ( events[i].events &amp; EPOLLIN ) )</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">int</span> client = <span class="number">0</span>;</span><br><span class="line">                ret = recv( sockfd, ( <span class="keyword">char</span>* )&amp;client, <span class="keyword">sizeof</span>( client ), <span class="number">0</span> );</span><br><span class="line">                <span class="keyword">if</span>( ( ( ret &lt; <span class="number">0</span> ) &amp;&amp; ( errno != EAGAIN ) ) || ret == <span class="number">0</span> ) </span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                &#123;   </span><br><span class="line">                    <span class="comment">// 开始接受新的连接</span></span><br><span class="line">                    struct sockaddr_in client_address;</span><br><span class="line">                    <span class="keyword">socklen_t</span> client_addrlength = <span class="keyword">sizeof</span>( client_address );</span><br><span class="line">                    <span class="keyword">int</span> connfd = accept( m_listenfd, ( struct sockaddr* )&amp;client_address, &amp;client_addrlength );</span><br><span class="line">                    <span class="keyword">if</span> ( connfd &lt; <span class="number">0</span> )</span><br><span class="line">                    &#123;</span><br><span class="line">                        <span class="built_in">printf</span>( <span class="string">&quot;errno is: %d\n&quot;</span>, errno );</span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="comment">// 添加fd到epoll fd，为之后接收客户端数据做准备</span></span><br><span class="line">                    addfd( m_epollfd, connfd );</span><br><span class="line">                    users[connfd].init( m_epollfd, connfd, client_address );</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 子进程同样需要处理信号</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>( ( sockfd == sig_pipefd[<span class="number">0</span>] ) &amp;&amp; ( events[i].events &amp; EPOLLIN ) )</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">int</span> sig;</span><br><span class="line">                <span class="keyword">char</span> signals[<span class="number">1024</span>];</span><br><span class="line">                ret = recv( sig_pipefd[<span class="number">0</span>], signals, <span class="keyword">sizeof</span>( signals ), <span class="number">0</span> );</span><br><span class="line">                <span class="keyword">if</span>( ret &lt;= <span class="number">0</span> )</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">for</span>( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; ret; ++i )</span><br><span class="line">                    &#123;</span><br><span class="line">                        <span class="keyword">switch</span>( signals[i] )</span><br><span class="line">                        &#123;</span><br><span class="line">                            <span class="keyword">case</span> SIGCHLD:</span><br><span class="line">                            &#123;</span><br><span class="line">                                <span class="keyword">pid_t</span> pid;</span><br><span class="line">                                <span class="keyword">int</span> stat;</span><br><span class="line">                                <span class="keyword">while</span> ( ( pid = waitpid( <span class="number">-1</span>, &amp;stat, WNOHANG ) ) &gt; <span class="number">0</span> )</span><br><span class="line">                                &#123;</span><br><span class="line">                                    <span class="keyword">continue</span>;</span><br><span class="line">                                &#125;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                            <span class="keyword">case</span> SIGTERM:</span><br><span class="line">                            <span class="keyword">case</span> SIGINT:</span><br><span class="line">                            &#123;</span><br><span class="line">                                m_stop = <span class="literal">true</span>;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                            <span class="keyword">default</span>:</span><br><span class="line">                            &#123;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 开始处理客户端发送的信息</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>( events[i].events &amp; EPOLLIN )</span><br><span class="line">            &#123;</span><br><span class="line">                 users[sockfd].process();</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">delete</span> [] users;</span><br><span class="line">    users = <span class="literal">NULL</span>;</span><br><span class="line">    close( pipefd );</span><br><span class="line">    <span class="comment">//close( m_listenfd );</span></span><br><span class="line">    close( m_epollfd );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">typename</span> T &gt;</span><br><span class="line"><span class="keyword">void</span> processpool&lt; T &gt;::run_parent()</span><br><span class="line">&#123;</span><br><span class="line">    setup_sig_pipe();</span><br><span class="line"></span><br><span class="line">    addfd( m_epollfd, m_listenfd );</span><br><span class="line"></span><br><span class="line">    epoll_event events[ MAX_EVENT_NUMBER ];</span><br><span class="line">    <span class="keyword">int</span> sub_process_counter = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> new_conn = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> number = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> ret = <span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>( ! m_stop )</span><br><span class="line">    &#123;</span><br><span class="line">        number = epoll_wait( m_epollfd, events, MAX_EVENT_NUMBER, <span class="number">-1</span> );</span><br><span class="line">        <span class="keyword">if</span> ( ( number &lt; <span class="number">0</span> ) &amp;&amp; ( errno != EINTR ) )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">printf</span>( <span class="string">&quot;epoll failure\n&quot;</span> );</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> ( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; number; i++ )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">int</span> sockfd = events[i].data.fd;</span><br><span class="line">            <span class="comment">// 有新的客户端连接, 选择一个进程池中的进程处理 </span></span><br><span class="line">            <span class="keyword">if</span>( sockfd == m_listenfd )</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">int</span> i =  sub_process_counter;</span><br><span class="line">                <span class="keyword">do</span></span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">if</span>( m_sub_process[i].m_pid != <span class="number">-1</span> )</span><br><span class="line">                    &#123;</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    i = (i+<span class="number">1</span>)%m_process_number;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">while</span>( i != sub_process_counter );</span><br><span class="line">                </span><br><span class="line">                <span class="keyword">if</span>( m_sub_process[i].m_pid == <span class="number">-1</span> )</span><br><span class="line">                &#123;</span><br><span class="line">                    m_stop = <span class="literal">true</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                sub_process_counter = (i+<span class="number">1</span>)%m_process_number;</span><br><span class="line">                <span class="comment">//send( m_sub_process[sub_process_counter++].m_pipefd[0], ( char* )&amp;new_conn, sizeof( new_conn ), 0 );</span></span><br><span class="line">                <span class="comment">// 发送信息给被选中的子进程，让其处理新进入的连接 </span></span><br><span class="line">                send( m_sub_process[i].m_pipefd[<span class="number">0</span>], ( <span class="keyword">char</span>* )&amp;new_conn, <span class="keyword">sizeof</span>( new_conn ), <span class="number">0</span> );</span><br><span class="line">                <span class="built_in">printf</span>( <span class="string">&quot;send request to child %d\n&quot;</span>, i );</span><br><span class="line">                <span class="comment">//sub_process_counter %= m_process_number;</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 处理信号事件</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>( ( sockfd == sig_pipefd[<span class="number">0</span>] ) &amp;&amp; ( events[i].events &amp; EPOLLIN ) )</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">int</span> sig;</span><br><span class="line">                <span class="keyword">char</span> signals[<span class="number">1024</span>];</span><br><span class="line">                ret = recv( sig_pipefd[<span class="number">0</span>], signals, <span class="keyword">sizeof</span>( signals ), <span class="number">0</span> );</span><br><span class="line">                <span class="keyword">if</span>( ret &lt;= <span class="number">0</span> )</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">for</span>( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; ret; ++i )</span><br><span class="line">                    &#123;</span><br><span class="line">                        <span class="keyword">switch</span>( signals[i] )</span><br><span class="line">                        &#123;</span><br><span class="line">                            <span class="keyword">case</span> SIGCHLD:</span><br><span class="line">                            &#123;</span><br><span class="line">                                <span class="keyword">pid_t</span> pid;</span><br><span class="line">                                <span class="keyword">int</span> stat;</span><br><span class="line">                                <span class="keyword">while</span> ( ( pid = waitpid( <span class="number">-1</span>, &amp;stat, WNOHANG ) ) &gt; <span class="number">0</span> )</span><br><span class="line">                                &#123;</span><br><span class="line">                                    <span class="keyword">for</span>( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; m_process_number; ++i )</span><br><span class="line">                                    &#123;</span><br><span class="line">                                        <span class="keyword">if</span>( m_sub_process[i].m_pid == pid )</span><br><span class="line">                                        &#123;</span><br><span class="line">                                            <span class="built_in">printf</span>( <span class="string">&quot;child %d join\n&quot;</span>, i );</span><br><span class="line">                                            close( m_sub_process[i].m_pipefd[<span class="number">0</span>] );</span><br><span class="line">                                            m_sub_process[i].m_pid = <span class="number">-1</span>;</span><br><span class="line">                                        &#125;</span><br><span class="line">                                    &#125;</span><br><span class="line">                                &#125;</span><br><span class="line">                                m_stop = <span class="literal">true</span>;</span><br><span class="line">                                <span class="keyword">for</span>( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; m_process_number; ++i )</span><br><span class="line">                                &#123;</span><br><span class="line">                                    <span class="keyword">if</span>( m_sub_process[i].m_pid != <span class="number">-1</span> )</span><br><span class="line">                                    &#123;</span><br><span class="line">                                        m_stop = <span class="literal">false</span>;</span><br><span class="line">                                    &#125;</span><br><span class="line">                                &#125;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                            <span class="keyword">case</span> SIGTERM:</span><br><span class="line">                            <span class="keyword">case</span> SIGINT:</span><br><span class="line">                            &#123;</span><br><span class="line">                                <span class="built_in">printf</span>( <span class="string">&quot;kill all the clild now\n&quot;</span> );</span><br><span class="line">                                <span class="keyword">for</span>( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; m_process_number; ++i )</span><br><span class="line">                                &#123;</span><br><span class="line">                                    <span class="keyword">int</span> pid = m_sub_process[i].m_pid;</span><br><span class="line">                                    <span class="keyword">if</span>( pid != <span class="number">-1</span> )</span><br><span class="line">                                    &#123;</span><br><span class="line">                                        kill( pid, SIGTERM );</span><br><span class="line">                                    &#125;</span><br><span class="line">                                &#125;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                            <span class="keyword">default</span>:</span><br><span class="line">                            &#123;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//close( m_listenfd );</span></span><br><span class="line">    close( m_epollfd );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a target="_blank" rel="noopener" href="http://www.52im.net/thread-1939-1-1.html">1. 高性能网络编程(六)：一文读懂高性能网络编程中的线程模型</a></p>
+
+    </article>
+    <!-- license  -->
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" title= "Linux编程基础5 - 进程间通信(POSIX共享内存)">
+                    <div class="prevTitle">Linux编程基础5 - 进程间通信(POSIX共享内存)</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- gitalk评论 -->
+
+    <!-- utteranc评论 -->
+
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    <!-- 评论 -->
+</main>
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- 不蒜子  -->
+    
+    <div class="busuanzi-container">
+    
+     
+    <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+    
+    </div>
+    
+</footer>
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:50vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%8A%E5%90%8C%E6%AD%A5-%E5%8D%8A%E5%BC%82%E6%AD%A5%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%AE%9E%E4%BE%8B"><span class="toc-number">1.</span> <span class="toc-text">半同步&#x2F;半异步进程池实例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90"><span class="toc-number">1.1.</span> <span class="toc-text">代码分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">2.</span> <span class="toc-text">参考资料</span></a></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 15
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/03</span><a class="archive-post-title" href= "/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" >Socket编程基础8 - 进程池和并发模型</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/26</span><a class="archive-post-title" href= "/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/24</span><a class="archive-post-title" href= "/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础4 - 进程间通信(共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/22</span><a class="archive-post-title" href= "/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/" >Linux编程基础3 - 进程间通信(信号量)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/21</span><a class="archive-post-title" href= "/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/" >Linux编程基础2 - 进程间通信(匿名管道)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/" >Linux编程基础1 - I/O总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/13</span><a class="archive-post-title" href= "/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/" >Socket编程基础7 - 定时器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/12</span><a class="archive-post-title" href= "/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/" >Socket编程基础6 - 高级IO函数</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/15</span><a class="archive-post-title" href= "/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/" >Socket编程基础5 - epoll实战</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/29</span><a class="archive-post-title" href= "/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/" >Socket编程基础4 - IO多路复用函数总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span><a class="archive-post-title" href= "/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/" >Socket编程基础3 - IO多路复用基础</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/" >Socket编程基础2 - 基本回射服务实例</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/" >Socket编程基础1 - 套接字和TCP/IP入门</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2017 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/09</span><a class="archive-post-title" href= "/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/" >一文搞懂C语言回调函数</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2016 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/31</span><a class="archive-post-title" href= "/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/" >C函数调用过程原理及函数栈帧分析(X86)</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="C/C++"><span class="iconfont-archer">&#xe606;</span>C/C++</span>
+    
+        <span class="sidebar-tag-name" data-tags="栈"><span class="iconfont-archer">&#xe606;</span>栈</span>
+    
+        <span class="sidebar-tag-name" data-tags="X86汇编"><span class="iconfont-archer">&#xe606;</span>X86汇编</span>
+    
+        <span class="sidebar-tag-name" data-tags="Linux编程"><span class="iconfont-archer">&#xe606;</span>Linux编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="多进程"><span class="iconfont-archer">&#xe606;</span>多进程</span>
+    
+        <span class="sidebar-tag-name" data-tags="IPC"><span class="iconfont-archer">&#xe606;</span>IPC</span>
+    
+        <span class="sidebar-tag-name" data-tags="管道"><span class="iconfont-archer">&#xe606;</span>管道</span>
+    
+        <span class="sidebar-tag-name" data-tags="信号量"><span class="iconfont-archer">&#xe606;</span>信号量</span>
+    
+        <span class="sidebar-tag-name" data-tags="文件I/O"><span class="iconfont-archer">&#xe606;</span>文件I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="标准I/O"><span class="iconfont-archer">&#xe606;</span>标准I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="共享内存"><span class="iconfont-archer">&#xe606;</span>共享内存</span>
+    
+        <span class="sidebar-tag-name" data-tags="UNP"><span class="iconfont-archer">&#xe606;</span>UNP</span>
+    
+        <span class="sidebar-tag-name" data-tags="网络编程"><span class="iconfont-archer">&#xe606;</span>网络编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="socket"><span class="iconfont-archer">&#xe606;</span>socket</span>
+    
+        <span class="sidebar-tag-name" data-tags="回射服务"><span class="iconfont-archer">&#xe606;</span>回射服务</span>
+    
+        <span class="sidebar-tag-name" data-tags="I/O模型"><span class="iconfont-archer">&#xe606;</span>I/O模型</span>
+    
+        <span class="sidebar-tag-name" data-tags="select()"><span class="iconfont-archer">&#xe606;</span>select()</span>
+    
+        <span class="sidebar-tag-name" data-tags="定时器"><span class="iconfont-archer">&#xe606;</span>定时器</span>
+    
+        <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》"><span class="iconfont-archer">&#xe606;</span>《Linux高性能服务器编程》</span>
+    
+        <span class="sidebar-tag-name" data-tags="poll()"><span class="iconfont-archer">&#xe606;</span>poll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="epoll()"><span class="iconfont-archer">&#xe606;</span>epoll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="ET/LT"><span class="iconfont-archer">&#xe606;</span>ET/LT</span>
+    
+        <span class="sidebar-tag-name" data-tags="进程池"><span class="iconfont-archer">&#xe606;</span>进程池</span>
+    
+        <span class="sidebar-tag-name" data-tags="并发模型"><span class="iconfont-archer">&#xe606;</span>并发模型</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="技术广角"><span class="iconfont-archer">&#xe60a;</span>技术广角</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "John Doe"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+</html>
+
+

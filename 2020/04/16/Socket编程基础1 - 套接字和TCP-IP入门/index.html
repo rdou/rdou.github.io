@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" >
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+    <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="这篇文章主要是用于复习UNP的第4章，以及之前章节关于TCP&#x2F;IP的基本知识。这部分内容主要包括TCP&#x2F;IP握手协议、socket的结构、如何建立socket连接等。这部分是后面学习的基础，因此必须要牢牢的掌握。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Socket编程基础1 - 套接字和TCP&#x2F;IP入门">
+<meta property="og:url" content="http://example.com/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="这篇文章主要是用于复习UNP的第4章，以及之前章节关于TCP&#x2F;IP的基本知识。这部分内容主要包括TCP&#x2F;IP握手协议、socket的结构、如何建立socket连接等。这部分是后面学习的基础，因此必须要牢牢的掌握。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.imgur.com/iIKPbGP.png">
+<meta property="og:image" content="https://i.imgur.com/pGKyxei.png">
+<meta property="og:image" content="https://i.imgur.com/e2KgGOK.png">
+<meta property="og:image" content="https://i.imgur.com/mVFJVyY.png">
+<meta property="og:image" content="https://i.imgur.com/pb0HShf.png">
+<meta property="og:image" content="https://i.imgur.com/KlgVD2E.png">
+<meta property="og:image" content="https://i.imgur.com/b0FPMEF.png">
+<meta property="og:image" content="https://i.imgur.com/VX1bVIk.png">
+<meta property="article:published_time" content="2020-04-16T22:27:34.000Z">
+<meta property="article:modified_time" content="2020-06-09T23:47:04.000Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="C&#x2F;C++">
+<meta property="article:tag" content="Linux编程">
+<meta property="article:tag" content="UNP">
+<meta property="article:tag" content="网络编程">
+<meta property="article:tag" content="socket">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/iIKPbGP.png">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    
+    <title>Socket编程基础1 - 套接字和TCP/IP入门 · 从零到负一</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href= "/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <link rel="stylesheet" href= "/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href= "/assets/touxiang.png" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script" />
+    <link rel="preload" href="/scripts/main.js" as="script" />
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >从零到负一</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">Socket编程基础1 - 套接字和TCP/IP入门</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>从零到负一</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:50vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            Socket编程基础1 - 套接字和TCP/IP入门
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "C/C++">C/C++</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux编程">Linux编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "UNP">UNP</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "网络编程">网络编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "socket">socket</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>Word count: <span class="post-count word-count">2.9k</span>Reading time: <span class="post-count reading-time">10 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2020/04/16</span>
+                    
+                    <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                        <span class="iconfont-archer">&#xe602;</span>
+                        <span id="busuanzi_value_page_pv"></span>
+                    </span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+  console.log("userAgent:" + browser.versions.userAgent);
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded');
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <p>这篇文章主要是用于复习UNP的第4章，以及之前章节关于TCP/IP的基本知识。这部分内容主要包括TCP/IP握手协议、socket的结构、如何建立socket连接等。这部分是后面学习的基础，因此必须要牢牢的掌握。</p>
+<a id="more"></a>
+
+<h2 id="IPV4套接字地址结构"><a href="#IPV4套接字地址结构" class="headerlink" title="IPV4套接字地址结构"></a>IPV4套接字地址结构</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __SOCK_SIZE__  16           <span class="comment">/* sizeof(struct sockaddr) */</span></span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> &#123;</span></span><br><span class="line">  <span class="keyword">__kernel_sa_family_t</span> sin_family;  <span class="comment">/* Address family          */</span></span><br><span class="line">  __be16               sin_port;    <span class="comment">/* Port number             */</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">in_addr</span>       <span class="title">sin_addr</span>;</span>    <span class="comment">/* Internet address        */</span></span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">  <span class="comment">/* Pad to size of `struct sockaddr&#x27;. */</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">char</span> __pad[__SOCK_SIZE__ - <span class="keyword">sizeof</span>(<span class="keyword">short</span> <span class="keyword">int</span>) -</span><br><span class="line">                      <span class="keyword">sizeof</span>(<span class="keyword">unsigned</span> <span class="keyword">short</span> <span class="keyword">int</span>) - <span class="keyword">sizeof</span>(struct in_addr)];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p><code>sin_family</code>是<code>unsigned short(16bit)</code>类型, <code>sin_port</code>也是<code>unsigned short(16bit)</code>类型，<code>sin_addr</code>结构体中只含有一个<code>unsigned int(32bit)</code>的变量，因此<code>sin_addr</code>实际长度也和<code>unsigned int(32bit)</code>一样。</p>
+<p>一般套接字必须包含<code>address family</code>, <code>port number</code>和<code>address</code>，长度大于等于16字节。这里定义的套接字占16字节，其中最后的<code>__pad</code>部分必须置零。</p>
+<p>有些函数，由于历史原因，并没有使用<code>sockaddr_in</code>作为参数的类型，而是使用<code>sockaddr</code>作为参数类型(比如<code>connect</code>函数)：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sockaddr</span> &#123;</span></span><br><span class="line">    <span class="keyword">sa_family_t</span> sa_family;     <span class="comment">/* address family, AF_xxx    */</span></span><br><span class="line">    <span class="keyword">char</span>        sa_data[<span class="number">14</span>];   <span class="comment">/* 14 bytes of protocol address    */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>我们可以将<code>sockaddr_in</code>类型强制转换成<code>sockaddr</code>类型，<code>sin_port</code>, <code>sin_addr</code>和<code>__pad</code>就成了<code>sa_data</code>。</p>
+<h2 id="字节排序和字符转换"><a href="#字节排序和字符转换" class="headerlink" title="字节排序和字符转换"></a>字节排序和字符转换</h2><p>不同硬件可能使用不同的字节排序(也就是我们说的大端和小端格式)，但network传输数据时是按照大端的格式进行传输的。因此我们在收发数据时，需要使用以下函数对数据进行转换：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 下面函数返回主机/网络字节的值</span></span><br><span class="line"><span class="function"><span class="keyword">uint32_t</span> <span class="title">htonl</span><span class="params">(<span class="keyword">uint32_t</span> hostlong)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">uint16_t</span> <span class="title">htons</span><span class="params">(<span class="keyword">uint16_t</span> hostshort)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">uint32_t</span> <span class="title">ntohl</span><span class="params">(<span class="keyword">uint32_t</span> netlong)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">uint16_t</span> <span class="title">ntohs</span><span class="params">(<span class="keyword">uint16_t</span> netshort)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>上面函数中<code>h</code>指的是本地主机，<code>n</code>指的是network，<code>s</code>是short, <code>l</code>是long。因此<code>htonl</code>就是将本地主机数据转换成network传输的数据类型，函数返回转换后的数据(如该数据小于1个字节，我们可以不用转换)。</p>
+<p>除了数据需要转换，我们还需要对<code>192.168.0.1</code>这样的字符串地址和network传输的地址进行转换，转换函数使用：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 成功返回1,其他情况返回0或-1</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">inet_pton</span><span class="params">(<span class="keyword">int</span> af, <span class="keyword">const</span> <span class="keyword">char</span> *src, <span class="keyword">void</span> *dst)</span></span>;</span><br><span class="line"><span class="comment">// 成功返回指向结果的指针</span></span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="keyword">char</span> *<span class="title">inet_ntop</span><span class="params">(<span class="keyword">int</span> af, <span class="keyword">const</span> <span class="keyword">void</span> *src, <span class="keyword">char</span> *dst, <span class="keyword">socklen_t</span> size)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>上面函数中<code>p</code>指的是表达式，<code>n</code>指的是数字。<code>inet_pton</code>常用于设置<code>sockaddr_in</code>结构体中的<code>sin_addr</code>。</p>
+<h2 id="TCP-3次握手和4次挥手"><a href="#TCP-3次握手和4次挥手" class="headerlink" title="TCP 3次握手和4次挥手"></a>TCP 3次握手和4次挥手</h2><p>这里我简单总结下TCP的连接和断开。TCP在进行连接时，客户端和服务器端需要通过进行3次握手来建立连接；TCP在断开时，客户端和服务器端需要通过进行4次挥手来断开连接。</p>
+<h3 id="3次握手"><a href="#3次握手" class="headerlink" title="3次握手"></a>3次握手</h3><h4 id="3次握手基本流程"><a href="#3次握手基本流程" class="headerlink" title="3次握手基本流程"></a>3次握手基本流程</h4><p style="text-align:center;"><img src="https://i.imgur.com/iIKPbGP.png"></p>
+<center> 图1. Socket 3次握手示意图 </center>
+
+<p>这是一个简化版的3次握手示意图。服务器端首先调用<code>socket</code>, <code>bind</code>, <code>listen</code>和<code>accept</code>，然后被<code>accept</code>阻塞；客户端在服务器端调用<code>accept</code>后调用<code>connect</code>去主动打开服务器端的socket；至于客户端的<code>socket</code>，可以在<code>accept</code>前或后被调用。</p>
+<blockquote>
+<ol start="0">
+<li>服务器端被<code>accept</code>阻塞；</li>
+<li>客户端调用<code>connect</code>然后被阻塞；同时发送<code>SYN J </code>给服务器端；</li>
+<li>服务器端收到<code>SYNJ</code>后，发送<code>SYN K</code>和<code>ACK J+1</code>(<code>ACK</code>的序列号是客户端<code>SYN</code>序列号加1)给客户端；</li>
+<li>客户端收到<code>ACK J+1</code>后，知道连接成功，发送<code>ACK K+1</code>给服务器端，并从<code>connect</code>函数中返回；</li>
+<li>服务器端收到<code>ACK K+1</code>后，知道客户端已经成功连接，从<code>accept</code>函数中返回。</li>
+</ol>
+</blockquote>
+<p>上面就是TCP 3次握手的简化过程，这里并没有包括一些出错的情况：比如服务器端/客户端没有响应，连接到错误的服务器，网络不可到达等等。</p>
+<h4 id="为什么要3次握手？"><a href="#为什么要3次握手？" class="headerlink" title="为什么要3次握手？"></a>为什么要3次握手？</h4><p>只有进行至少3次握手，客户端和服务器端才能知道对方都准备好了。我们可以简单理解成，3次握手后，客户端和服务器端都知道对方可以读、可以写，然后就可以进行数据传输了。下面简单解释下：</p>
+<p>比如第2次握手，服务器端已经知道自己可以接收数据(同时也知道客户端可以发送数据)，但它不知道自己可不可以发送数据(也不知道客户端能不能接收数据)，因此，服务器端发送<code>ACK J+1</code>给客户。客户端在收到<code>ACK J+1</code>前也不知道自己能不能发送/接收数据，当收到<code>ACK J+1</code>后，它知道自己可以发送/接收数据了。接下来的第3次握手后，服务器端也知道自己可以发送/接收数据了。</p>
+<h3 id="4次挥手"><a href="#4次挥手" class="headerlink" title="4次挥手"></a>4次挥手</h3><p style="text-align:center;"><img src="https://i.imgur.com/pGKyxei.png"></p>
+<center>图2. TCP 4次挥手的示意图</center>
+#### 4次挥手的基本流程
+
+<p>当客户端断开连接(可能是直接调用<code>close/shutdown</code>，也可能是线程被关掉)时，4次挥手就发生了。</p>
+<blockquote>
+<ol>
+<li>客户端发送<code>FIN M</code>给服务器端；</li>
+<li>服务器端收到<code>FIN M</code>后，发送<code>ACK M+1</code>给客户端；</li>
+<li>在之后某个时间，服务器端调用<code>close</code>函数，同时发送<code>FIN N</code>给客户端；</li>
+<li>客户端收到<code>FIN N</code>后，回复一个<code>ACK N+1</code>，然后客户端就断开了连接。</li>
+</ol>
+</blockquote>
+<p>这里的流程和3次握手很像，都是发送一个信号，然后回复一个信号，回复信号的序列号是接收信号的序列号加1。</p>
+<h4 id="为什么要4次挥手？"><a href="#为什么要4次挥手？" class="headerlink" title="为什么要4次挥手？"></a>为什么要4次挥手？</h4><p>4次挥手和3次握手相比，多出了一步，就是服务器端发送<code>FIN N</code>给客户端，之所以要多出这步，是因为服务器端不会在接收到客户端关闭的信号后，立即关闭socket，而是会等待一段时间再调用<code>close</code>函数，因此我们需要多一次挥手。</p>
+<h3 id="3次握手和4次挥手的状态转移图"><a href="#3次握手和4次挥手的状态转移图" class="headerlink" title="3次握手和4次挥手的状态转移图"></a>3次握手和4次挥手的状态转移图</h3><p style="text-align:center;"><img src="https://i.imgur.com/e2KgGOK.png"></p>
+<center>图3. TCP 3次握手和4次挥手的流程图</center>
+
+<p>这个是完整的3次握手、4次挥手流程图，这个流程中添加了客户端和服务器端的状态。下图是一个完整的TCP状态转移图：</p>
+<p style="text-align:center;"><img src="https://i.imgur.com/mVFJVyY.png"></p>
+<center>图4. TCP状态转移图</center>
+
+<p>这个图比较复杂，和图3一起看比较好。<code>TIME_WAIT</code>是一个不太容易理解的状态，这里我不做深入研究了。</p>
+<h2 id="Socket编程API"><a href="#Socket编程API" class="headerlink" title="Socket编程API"></a>Socket编程API</h2><p>最简单的socket编程只需要几个API即可，我这里总结一下服务器端和客户端分别需要什么样的API。</p>
+<h3 id="服务器端"><a href="#服务器端" class="headerlink" title="服务器端"></a>服务器端</h3><p>图5是一个简单的服务器-客户端socket编程中服务器端的示意图，一共用到了4个socket编程专用的函数。它们分别是<code>socket()</code>, <code>bind()</code>, <code>listen()</code>, <code>accept()</code>。</p>
+<p style="text-align:center;"><img src="https://i.imgur.com/pb0HShf.png"></p>
+<center>图5. 服务器端socket通信</center>
+
+<ol>
+<li><p><code>socket()</code>函数用于生成一个socket描述符，根据实际需要，我们可以让<code>socket()</code>生成适合不同网络的socket描述符。比如生成IPV4, Stream并且是TCP的socket描述符和IPV4, 报文并且是UDP的socket描述符：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> sock_udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);</span><br><span class="line"><span class="keyword">int</span> sock_tcp = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);</span><br></pre></td></tr></table></figure></li>
+<li><p>有了socket描述符后，我们就需要将IP, 端口等的信息绑定到socket描述符上。我们通过调用<code>bind()</code>函数来实现这个功能。bind()用于绑定自己的接受端IP和端口，一般只绑定服务器端，不绑定客户端。服务器端如果有多个IP地址(比如多个网卡)，那么可以指定某个网卡的IP接收数据；我们也可以用<code>INADDR_ANY</code>作为IP地址，内核会在连接时自动选择一个IP地址用于连接。要使用<code>bind()</code>，我们首先需要一个已经写好IP和端口的<code>sockaddr_in</code>和它的地址，然后需要服务器端用于监听的socket描述符号，下面是<code>bind()</code>的函数原型。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">bind</span><span class="params">(<span class="keyword">int</span> sockfd, <span class="keyword">const</span> struct sockaddr *addr, <span class="keyword">socklen_t</span> addrlen)</span></span>;</span><br></pre></td></tr></table></figure></li>
+<li><p>绑定IP和端口后，服务器端需要调用<code>listen()</code>对socket描述符进行监听。我们这里要设置一个最大连接数，这个最大连接数包括已经完成连接的和未完成连接的socket。已完成的连接是指服务器端已经<code>accept()</code>的连接，之前的连接都是未完成的连接。</p>
+</li>
+<li><p>接下来就是连接的最后一步了，调用<code>accept()</code>函数来接受客户端发送的连接。<code>accept()</code>函数默认情况下会阻塞进程，直到有连接到达。该函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">accept</span><span class="params">(<span class="keyword">int</span> socket, struct sockaddr *<span class="keyword">restrict</span> address, <span class="keyword">socklen_t</span> *<span class="keyword">restrict</span> address_len)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>我们需要提供监听socket描述符、用于存放客户端IP, 端口信息的空间的地址以及该空间的大小。这个函数对于每个成功的接受，都会生成一个新的socket描述符，之后和客户端进行通信都是通过这个新生成的socket描述符。</p>
+</li>
+</ol>
+<h3 id="客户端"><a href="#客户端" class="headerlink" title="客户端"></a>客户端</h3><p>客户端和服务器端类似，图6是客户端socket通信的示意图。我们可以看到，和服务器端相比，少了<code>bind()</code>, <code>listen()</code>和<code>accept()</code>，但多了<code>connect()</code>。</p>
+<p style="text-align:center;"><img src="https://i.imgur.com/KlgVD2E.png"></p>
+<center>图6. 客户端socket通信</center>
+
+<p><code>connect()</code>函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">connect</span><span class="params">(<span class="keyword">int</span> sockfd, <span class="keyword">const</span> struct sockaddr *addr, <span class="keyword">socklen_t</span> addrlen)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>这里<code>sockfd</code>是客户端<code>socket()</code>返回的socket描述符，<code>sockaddr</code>存放的是服务器端的IP和端口，<code>addrlen</code>是<code>sockaddr</code>存放数据的大小，这些数据都会复制到内核中的buffer中。</p>
+<p>这种传地址、数据长度给函数(再给内核)的方法也叫“值-结果”，在Linux网络编程中，使用这种方式的函数还有很多，下面是写入内核的示意图：</p>
+<p style="text-align:center;"><img src="https://i.imgur.com/b0FPMEF.png"></p>
+<center>图7. 值-结果参数示意图</center>
+
+<h2 id="Socket多进程基础"><a href="#Socket多进程基础" class="headerlink" title="Socket多进程基础"></a>Socket多进程基础</h2><h3 id="fork和exec函数"><a href="#fork和exec函数" class="headerlink" title="fork和exec函数"></a>fork和exec函数</h3><p>这部分属于多进程编程的范畴，<code>fork()</code>简单来说就是父进程复制一个进程作为子进程，这个子进程和父进程属于不同的内存空间，但他们的内容是一样的。现在Linux中并不是直接复制，而是只读的部分还是在一起，但要写的部分放在自己的内存空间。这么做主要是为了减少内存空间和时间的开销。</p>
+<p><code>exec()</code>函数用于覆盖父进程复制的空间，也就是用子进程要运行的代码来替代父进程的代码。在socket编程中，服务器端往往不用额外的代码，只需要和父进程一样的代码，因此可以不用<code>exec()</code>。</p>
+<h3 id="示例代码"><a href="#示例代码" class="headerlink" title="示例代码"></a>示例代码</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> ( ; ; ) &#123;</span><br><span class="line">    clilen = <span class="keyword">sizeof</span>(cliaddr);</span><br><span class="line">    <span class="keyword">if</span> ((connfd = accept(listenfd, (SA *) &amp;cliaddr, &amp;clilen)) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (errno == EINTR)</span><br><span class="line">            <span class="keyword">continue</span>;        <span class="comment">/* back to for() */</span></span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            err_sys(<span class="string">&quot;accept error&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">if</span> ((childpid = Fork()) == <span class="number">0</span>) &#123;    <span class="comment">/* child process */</span></span><br><span class="line">        Close(listenfd);    <span class="comment">/* close listening socket */</span></span><br><span class="line">        <span class="comment">// do something...</span></span><br><span class="line">        Close(connfd)</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    Close(connfd);            <span class="comment">/* parent closes connected socket */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这是一段简单的多进程socket服务器端的代码，我们可以看到子进程返回后，第一件事情就是关闭<code>listenfd</code>，之后父进程会关闭<code>connfd</code>。这里要注意，在关闭socket描述符时，并不是调用<code>close()</code>就结束该描述符对应的连接。每个描述符有一个counter，只有counter为0时，该连接才真正的关闭。这里经过<code>fork()</code>后，<code>listenfd</code>的counter变成了2，因此关闭<code>listenfd</code>后，该socket并没有结束通信。图8展示了这个过程：</p>
+<p style="text-align:center;"><img src="https://i.imgur.com/VX1bVIk.png"></p>
+<center>图8. fork后的socket端口</center>
+
+<p><code>fork()</code>后，<code>connfd</code>和<code>listenfd</code>都有两个；当通信结束时，两个<code>connfd</code>都会被关闭，从而断开连接。而<code>listenfd</code>最终会保持一个，因此这个socket不会断开连接。</p>
+
+    </article>
+    <!-- license  -->
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href= "/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/" title= "Socket编程基础2 - 基本回射服务实例">
+                    <div class="nextTitle">Socket编程基础2 - 基本回射服务实例</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/" title= "一文搞懂C语言回调函数">
+                    <div class="prevTitle">一文搞懂C语言回调函数</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- gitalk评论 -->
+
+    <!-- utteranc评论 -->
+
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    <!-- 评论 -->
+</main>
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- 不蒜子  -->
+    
+    <div class="busuanzi-container">
+    
+     
+    <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+    
+    </div>
+    
+</footer>
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:50vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#IPV4%E5%A5%97%E6%8E%A5%E5%AD%97%E5%9C%B0%E5%9D%80%E7%BB%93%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">IPV4套接字地址结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AD%97%E8%8A%82%E6%8E%92%E5%BA%8F%E5%92%8C%E5%AD%97%E7%AC%A6%E8%BD%AC%E6%8D%A2"><span class="toc-number">2.</span> <span class="toc-text">字节排序和字符转换</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TCP-3%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%92%8C4%E6%AC%A1%E6%8C%A5%E6%89%8B"><span class="toc-number">3.</span> <span class="toc-text">TCP 3次握手和4次挥手</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3%E6%AC%A1%E6%8F%A1%E6%89%8B"><span class="toc-number">3.1.</span> <span class="toc-text">3次握手</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%9F%BA%E6%9C%AC%E6%B5%81%E7%A8%8B"><span class="toc-number">3.1.1.</span> <span class="toc-text">3次握手基本流程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%813%E6%AC%A1%E6%8F%A1%E6%89%8B%EF%BC%9F"><span class="toc-number">3.1.2.</span> <span class="toc-text">为什么要3次握手？</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4%E6%AC%A1%E6%8C%A5%E6%89%8B"><span class="toc-number">3.2.</span> <span class="toc-text">4次挥手</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%814%E6%AC%A1%E6%8C%A5%E6%89%8B%EF%BC%9F"><span class="toc-number">3.2.1.</span> <span class="toc-text">为什么要4次挥手？</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%92%8C4%E6%AC%A1%E6%8C%A5%E6%89%8B%E7%9A%84%E7%8A%B6%E6%80%81%E8%BD%AC%E7%A7%BB%E5%9B%BE"><span class="toc-number">3.3.</span> <span class="toc-text">3次握手和4次挥手的状态转移图</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Socket%E7%BC%96%E7%A8%8BAPI"><span class="toc-number">4.</span> <span class="toc-text">Socket编程API</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%AB%AF"><span class="toc-number">4.1.</span> <span class="toc-text">服务器端</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%A2%E6%88%B7%E7%AB%AF"><span class="toc-number">4.2.</span> <span class="toc-text">客户端</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Socket%E5%A4%9A%E8%BF%9B%E7%A8%8B%E5%9F%BA%E7%A1%80"><span class="toc-number">5.</span> <span class="toc-text">Socket多进程基础</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#fork%E5%92%8Cexec%E5%87%BD%E6%95%B0"><span class="toc-number">5.1.</span> <span class="toc-text">fork和exec函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81"><span class="toc-number">5.2.</span> <span class="toc-text">示例代码</span></a></li></ol></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 15
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/03</span><a class="archive-post-title" href= "/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" >Socket编程基础8 - 进程池和并发模型</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/26</span><a class="archive-post-title" href= "/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/24</span><a class="archive-post-title" href= "/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础4 - 进程间通信(共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/22</span><a class="archive-post-title" href= "/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/" >Linux编程基础3 - 进程间通信(信号量)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/21</span><a class="archive-post-title" href= "/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/" >Linux编程基础2 - 进程间通信(匿名管道)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/" >Linux编程基础1 - I/O总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/13</span><a class="archive-post-title" href= "/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/" >Socket编程基础7 - 定时器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/12</span><a class="archive-post-title" href= "/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/" >Socket编程基础6 - 高级IO函数</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/15</span><a class="archive-post-title" href= "/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/" >Socket编程基础5 - epoll实战</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/29</span><a class="archive-post-title" href= "/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/" >Socket编程基础4 - IO多路复用函数总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span><a class="archive-post-title" href= "/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/" >Socket编程基础3 - IO多路复用基础</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/" >Socket编程基础2 - 基本回射服务实例</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/" >Socket编程基础1 - 套接字和TCP/IP入门</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2017 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/09</span><a class="archive-post-title" href= "/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/" >一文搞懂C语言回调函数</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2016 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/31</span><a class="archive-post-title" href= "/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/" >C函数调用过程原理及函数栈帧分析(X86)</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="C/C++"><span class="iconfont-archer">&#xe606;</span>C/C++</span>
+    
+        <span class="sidebar-tag-name" data-tags="栈"><span class="iconfont-archer">&#xe606;</span>栈</span>
+    
+        <span class="sidebar-tag-name" data-tags="X86汇编"><span class="iconfont-archer">&#xe606;</span>X86汇编</span>
+    
+        <span class="sidebar-tag-name" data-tags="Linux编程"><span class="iconfont-archer">&#xe606;</span>Linux编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="多进程"><span class="iconfont-archer">&#xe606;</span>多进程</span>
+    
+        <span class="sidebar-tag-name" data-tags="IPC"><span class="iconfont-archer">&#xe606;</span>IPC</span>
+    
+        <span class="sidebar-tag-name" data-tags="管道"><span class="iconfont-archer">&#xe606;</span>管道</span>
+    
+        <span class="sidebar-tag-name" data-tags="信号量"><span class="iconfont-archer">&#xe606;</span>信号量</span>
+    
+        <span class="sidebar-tag-name" data-tags="文件I/O"><span class="iconfont-archer">&#xe606;</span>文件I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="标准I/O"><span class="iconfont-archer">&#xe606;</span>标准I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="共享内存"><span class="iconfont-archer">&#xe606;</span>共享内存</span>
+    
+        <span class="sidebar-tag-name" data-tags="UNP"><span class="iconfont-archer">&#xe606;</span>UNP</span>
+    
+        <span class="sidebar-tag-name" data-tags="网络编程"><span class="iconfont-archer">&#xe606;</span>网络编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="socket"><span class="iconfont-archer">&#xe606;</span>socket</span>
+    
+        <span class="sidebar-tag-name" data-tags="回射服务"><span class="iconfont-archer">&#xe606;</span>回射服务</span>
+    
+        <span class="sidebar-tag-name" data-tags="I/O模型"><span class="iconfont-archer">&#xe606;</span>I/O模型</span>
+    
+        <span class="sidebar-tag-name" data-tags="select()"><span class="iconfont-archer">&#xe606;</span>select()</span>
+    
+        <span class="sidebar-tag-name" data-tags="定时器"><span class="iconfont-archer">&#xe606;</span>定时器</span>
+    
+        <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》"><span class="iconfont-archer">&#xe606;</span>《Linux高性能服务器编程》</span>
+    
+        <span class="sidebar-tag-name" data-tags="poll()"><span class="iconfont-archer">&#xe606;</span>poll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="epoll()"><span class="iconfont-archer">&#xe606;</span>epoll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="ET/LT"><span class="iconfont-archer">&#xe606;</span>ET/LT</span>
+    
+        <span class="sidebar-tag-name" data-tags="进程池"><span class="iconfont-archer">&#xe606;</span>进程池</span>
+    
+        <span class="sidebar-tag-name" data-tags="并发模型"><span class="iconfont-archer">&#xe606;</span>并发模型</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="技术广角"><span class="iconfont-archer">&#xe60a;</span>技术广角</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "John Doe"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+</html>
+
+

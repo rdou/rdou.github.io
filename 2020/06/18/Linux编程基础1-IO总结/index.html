@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" >
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+    <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="Linux下的I&#x2F;O主要分为两种：文件I&#x2F;O和标准I&#x2F;O。文件I&#x2F;O直接使用系统调用，遵循POSIX标准(不遵循ANSI C标准)，是无缓冲的I&#x2F;O；标准I&#x2F;O对文件I&#x2F;O进行了封装，遵循ANSI C标准(不遵循POSIX标准)，是有缓冲的I&#x2F;O。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux编程基础1 - I&#x2F;O总结">
+<meta property="og:url" content="http://example.com/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="Linux下的I&#x2F;O主要分为两种：文件I&#x2F;O和标准I&#x2F;O。文件I&#x2F;O直接使用系统调用，遵循POSIX标准(不遵循ANSI C标准)，是无缓冲的I&#x2F;O；标准I&#x2F;O对文件I&#x2F;O进行了封装，遵循ANSI C标准(不遵循POSIX标准)，是有缓冲的I&#x2F;O。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://kedizheng.com/wp-content/uploads/2019/08/Screen-Shot-2019-08-19-at-10.46.18-AM-1200x527.png">
+<meta property="article:published_time" content="2020-06-18T08:49:43.000Z">
+<meta property="article:modified_time" content="2020-06-20T23:21:18.000Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="C&#x2F;C++">
+<meta property="article:tag" content="Linux编程">
+<meta property="article:tag" content="文件I&#x2F;O">
+<meta property="article:tag" content="标准I&#x2F;O">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://kedizheng.com/wp-content/uploads/2019/08/Screen-Shot-2019-08-19-at-10.46.18-AM-1200x527.png">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    
+    <title>Linux编程基础1 - I/O总结 · 从零到负一</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href= "/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <link rel="stylesheet" href= "/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href= "/assets/touxiang.png" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script" />
+    <link rel="preload" href="/scripts/main.js" as="script" />
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >从零到负一</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">Linux编程基础1 - I/O总结</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>从零到负一</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:50vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            Linux编程基础1 - I/O总结
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "C/C++">C/C++</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux编程">Linux编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "文件I/O">文件I/O</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "标准I/O">标准I/O</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>Word count: <span class="post-count word-count">3.4k</span>Reading time: <span class="post-count reading-time">13 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2020/06/18</span>
+                    
+                    <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                        <span class="iconfont-archer">&#xe602;</span>
+                        <span id="busuanzi_value_page_pv"></span>
+                    </span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+  console.log("userAgent:" + browser.versions.userAgent);
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded');
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <p>Linux下的I/O主要分为两种：文件I/O和标准I/O。文件I/O直接使用系统调用，遵循POSIX标准(不遵循ANSI C标准)，是无缓冲的I/O；标准I/O对文件I/O进行了封装，遵循ANSI C标准(不遵循POSIX标准)，是有缓冲的I/O。</p>
+<a id="more"></a>
+
+<h2 id="理解有-无缓冲"><a href="#理解有-无缓冲" class="headerlink" title="理解有/无缓冲"></a>理解有/无缓冲</h2><p>这里的有无缓存是指函数在用户空间是否有缓冲。不管用什么I/O，最后都需要文件I/O来和内核进行通信。在内核中，有专门的缓冲来储存文件I/O输入的信息。比如<code>write()</code>会直接把数据写入内核的相应缓冲中；比如行缓冲的函数，需要接收<code>\n</code>后才会将缓冲中的数据写入内核中的缓冲。注意1，缓冲并不是指函数参数中的<code>buf</code>；注意2，每个流在进程中都有与其对应的缓冲，对于每个流，不同的标准I/O函数作用于相同的缓冲。</p>
+<p>有一点我不清楚，到底读写各有一个缓冲还是一共只有一个缓冲？这里暂且认为一共只有一个缓冲吧。不管有几个缓冲，读写都需要使用缓冲，但读操作和写操作不一样。读是从内核缓冲中读一大块到I/O的缓冲，然后用户程序慢慢地从I/O缓冲中读取数据；而写就是只有I/O缓冲满了才会写入内核的缓冲(如果是全缓冲的话)。</p>
+<h2 id="文件I-O"><a href="#文件I-O" class="headerlink" title="文件I/O"></a>文件I/O</h2><h3 id="open和close"><a href="#open和close" class="headerlink" title="open和close"></a>open和close</h3><p><code>open()</code>和<code>close()</code>用于打开、关闭文件，其函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 错误返回-1，成功打开返回文件描述符</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">open</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *pathname, <span class="keyword">int</span> flags, <span class="keyword">mode_t</span> mode)</span></span>;</span><br><span class="line"><span class="comment">// 错误返回-1，成功返回0</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">close</span><span class="params">(<span class="keyword">int</span> fd)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>open()</code>函数的<code>flags</code>必须要有<code>O_RDONLY</code>, <code>O_WRONLY</code> 或 <code>O_RDWR</code>；如果需要创建文件，还需要添加<code>O_CREAT</code>并且给出相应的mode值(比如<code>0777</code>)。<code>open()</code>函数返回当前可用的最小文件描述符。<code>close()</code>函数可以被直接调用，也可以通过结束进程的方式来间接调用。</p>
+<h3 id="write和read"><a href="#write和read" class="headerlink" title="write和read"></a>write和read</h3><p><code>write()</code>和<code>read()</code>函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 函数成功返回读/写的字节数</span></span><br><span class="line"><span class="function"><span class="keyword">ssize_t</span> <span class="title">write</span><span class="params">(<span class="keyword">int</span> fd, <span class="keyword">const</span> <span class="keyword">void</span> *buf, <span class="keyword">size_t</span> count)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">ssize_t</span> <span class="title">read</span><span class="params">(<span class="keyword">int</span> fd, <span class="keyword">void</span> *buf, <span class="keyword">size_t</span> count)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>这两个函数成功的话都返回读/写的字节数，这个字节数可能小于第三个参数设置的<code>count</code>，比如从socket读或者读到了<code>EOF</code>都会导致读的数量少于<code>count</code>。我们这里看个例子：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">char</span> *buf = <span class="string">&quot;sdsdababcdcd\n&quot;</span>;</span><br><span class="line">    <span class="comment">// 输出 sdsdababcdcd</span></span><br><span class="line">    <span class="keyword">int</span> wrLen = write(STDOUT_FILENO, buf, <span class="built_in">strlen</span>(buf));</span><br><span class="line">    </span><br><span class="line">    buf = <span class="string">&quot;sdsd\0abab\ncdcd&quot;</span>;</span><br><span class="line">    <span class="comment">// 输出 sdsd</span></span><br><span class="line">    wrLen = write(STDOUT_FILENO, buf, <span class="built_in">strlen</span>(buf));</span><br><span class="line">    <span class="comment">// 输出 4</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;\nstdout wrLen = %d\n\n&quot;</span>, wrLen);</span><br><span class="line">	</span><br><span class="line">    <span class="comment">// 注意创建文件需要添加mode</span></span><br><span class="line">    <span class="keyword">int</span> fd = open(<span class="string">&quot;file_io_test.log&quot;</span>, O_RDWR | O_CREAT, <span class="number">0666</span>);</span><br><span class="line">    buf = <span class="string">&quot;sdsd\0abab\ncdcd&quot;</span>;</span><br><span class="line">    <span class="comment">// 写入 sdsd</span></span><br><span class="line">    wrLen = write(fd, buf, <span class="built_in">strlen</span>(buf));</span><br><span class="line">    <span class="comment">// 输出 file wrLen = 4</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;file wrLen = %d\n&quot;</span>, wrLen);</span><br><span class="line">    </span><br><span class="line">    close(fd);</span><br><span class="line">    fd = open(<span class="string">&quot;file_io_test.log&quot;</span>, O_RDWR);</span><br><span class="line">    <span class="keyword">char</span> rdbuf[<span class="number">20</span>];</span><br><span class="line">    <span class="keyword">int</span> rdLen = read(fd, rdbuf, <span class="number">20</span>);</span><br><span class="line">    <span class="comment">// file rdLen = 4</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;file rdLen = %d\n&quot;</span>, wrLen);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 进程结束前不会输出</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%s&quot;</span>, rdbuf);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>从这个例子我们可以看出，</p>
+<ol>
+<li><code>write()</code>和<code>read()</code>函数遇到<code>\0</code>都会自动结束读写(遇到<code>EOF</code>也会)；</li>
+<li><code>write()</code>函数可以不加<code>\n</code>输出到<code>STDOUT_FILENO</code>，但<code>printf()</code>却不行；</li>
+<li><code>write()</code>文件后需要<code>close()</code>或者调整偏移量，否则之后不能正确地读取文件内容。</li>
+</ol>
+<p>上面的第2点牵涉行缓存的内容，这个会在下面进行讨论。我们这里先来看看文件描述符以及文件的偏移量偏移量。</p>
+<h3 id="lseek和文件描述符"><a href="#lseek和文件描述符" class="headerlink" title="lseek和文件描述符"></a>lseek和文件描述符</h3><p>Linux中每一个文件, socket, 设备等都是“文件”，都可以用文件I/O的函数对它们进行操作。其中<code>fd0</code>是标准输入，<code>fd1</code>是标准输出，<code>fd2</code>是标准错误输出，其它的文件描述符都从<code>fd3</code>开始。</p>
+<p>在每个进程的进程表中都有一个记录文件表的项，每一个项对应一个文件表项。文件表项有文件的标志位、偏移量、打开文件的数量以及指向v-node表的指针等。图1是一个进程中的文件表项示意图：</p>
+<p><img src="http://kedizheng.com/wp-content/uploads/2019/08/Screen-Shot-2019-08-19-at-10.46.18-AM-1200x527.png"></p>
+<center> 图1. 文件表项示意图</center>
+不同的进程可以存在文件指针指向相同文件表项的情况，比如父进程`fork()`的子进程，它的文件指针会指向和父进程一样的文件表项。我们每次对文件描述符进行读写操作后，偏移量都会自动更新，我们也可以用`lseek()`函数手动更新偏移量。`lseek()`函数原型如下：
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 如果成功，返回当前相对于文件开始的偏移量；失败返回-1</span></span><br><span class="line"><span class="function"><span class="keyword">off_t</span> <span class="title">lseek</span><span class="params">(<span class="keyword">int</span> fd, <span class="keyword">off_t</span> offset, <span class="keyword">int</span> whence)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>我们可以改变<code>whence</code>来调整偏移量修改的位置，可以是当前的位置(<code>pcur + offset</code>)、也可是文件开始的位置(<code>0 + offset</code>)，也可以是文件结束的位置(<code>file_size + offset</code>)。</p>
+<h2 id="标准I-O"><a href="#标准I-O" class="headerlink" title="标准I/O"></a>标准I/O</h2><p>文件I/O直接操作文件描述符，而标准I/O操作流，流将标准I/O和文件描述符联系在了一起。标准I/O和文件I/O的一个不同之处在于，标准I/O有缓冲而文件I/O没有缓冲，我们先来看看缓冲。</p>
+<h3 id="缓冲"><a href="#缓冲" class="headerlink" title="缓冲"></a>缓冲</h3><p>缓冲分为3种，1. 全缓冲；2. 行缓冲；3. 无缓冲。</p>
+<p>在一般情况下，行缓冲的I/O函数只有在遇到<code>\n</code>时才会将缓冲中的数据写入内核(如果I/O的缓冲写满了，也会进行同样的操作)；而全缓冲必须在I/O的缓冲写满时才会将数据写入内核。</p>
+<p>标准I/O对<code>stdout/stdin</code>的操作是行缓冲，对<code>stderr</code>的操作是无缓存，而对文件的操作是全缓冲。我们可以通过下面函数修改流的缓冲类型：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setbuf</span><span class="params">(FILE *stream, <span class="keyword">char</span> *buf)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">setvbuf</span><span class="params">(FILE *stream, <span class="keyword">char</span> *buf, <span class="keyword">int</span> mode, <span class="keyword">size_t</span> size)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>如果我们希望在缓冲没有写满的情况下将缓冲内容写入文件，那么我们要用<code>fflush()</code>函数(或者关闭文件、终止进程)。<code>fflush()</code>作用于输出流时，会清空(而不是写入磁盘)缓冲中的数据。除了<code>fflush()</code>，<code>fseek()</code>也可以实现相同的作用。</p>
+<h3 id="流的打开-关闭"><a href="#流的打开-关闭" class="headerlink" title="流的打开/关闭"></a>流的打开/关闭</h3><p>标准I/O有3个函数用于打开流：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 成功返回FILE类型指针，否则返回NULL</span></span><br><span class="line"><span class="function">FILE *<span class="title">fopen</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *pathname, <span class="keyword">const</span> <span class="keyword">char</span> *mode)</span></span>;</span><br><span class="line"><span class="function">FILE *<span class="title">fdopen</span><span class="params">(<span class="keyword">int</span> fd, <span class="keyword">const</span> <span class="keyword">char</span> *mode)</span></span>;</span><br><span class="line"><span class="function">FILE *<span class="title">freopen</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *pathname, <span class="keyword">const</span> <span class="keyword">char</span> *mode, FILE *stream)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>fopen()</code>函数用于打开/新建文件，<code>mode</code>可以是<code>w</code>, <code>r</code>, <code>a</code>,  <code>w</code>+, <code>r+</code>和<code>a+</code>，具体意义请参考APUE 5.5节。注意，在文件I/O中，我们同样可以设置<code>mode</code>，但那个<code>mode</code>和这里的<code>mode</code>不一样。<code>fopen()</code>创建的文件没有设置访问权限，我们需要额外使用<code>umask()</code>函数来设置访问权限。</p>
+<p><code>fdopen()</code>是POSIX标准下的函数，它可以将文件描述符转换成相应的<code>FILE</code>指针。由于<code>fd</code>已经存在，因此一些<code>mode</code>的意义和<code>fopen()</code>不同，具体说明参考APUE 5.5节。</p>
+<p><code>freopen()</code>函数用于将<code>stream</code>绑定到<code>pathname</code>这个文件处，然后关闭<code>stream</code>；或者改变<code>stream</code>的<code>mode</code>，<a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man3/fopen.3.html">具体细节参考本链接</a>。</p>
+<p>标准I/O用于关闭流的函数是<code>fclose()</code>，该函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 成功返回0，否则返回EOF(-1)</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fclose</span><span class="params">(FILE *stream)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>文件关闭后，该文件缓冲中所有数据被冲洗；进程正常终止时，所有标准I/O会被关闭，并且所有I/O中的缓冲会被冲洗。</p>
+<h3 id="流的读写-一次一个字符"><a href="#流的读写-一次一个字符" class="headerlink" title="流的读写(一次一个字符)"></a>流的读写(一次一个字符)</h3><p>标准I/O中，流的读写有很多函数，它们可以分为3类：一次一个字符，一次一行和二进制/直接读写。这里先看一次一个字符的函数。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 成功返回下一个读取的字符；失败或者读到文件尾，返回EOF</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">getc</span><span class="params">(FILE *fp)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fgetc</span><span class="params">(FILE *fp)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">getchar</span><span class="params">(<span class="keyword">void</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 成功返回写入的字符；失败返回EOF</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">putc</span><span class="params">(<span class="keyword">int</span> c, FILE *fp)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fputc</span><span class="params">(<span class="keyword">int</span> c, FILE *fp)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">putchar</span><span class="params">(<span class="keyword">int</span> c)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>getc()</code>和<code>fgetc()</code>作用一样，不过<code>getc()</code>可以是宏，因此<code>getc()</code>的参数不能有副作用。一般情况下，<code>getc()</code>要比<code>fgetc()</code>快一些。<code>getchar()</code>和<code>getc(stdin)</code>等效。因为读取失败和读到<code>EOF</code>都返回<code>EOF</code>，我们需要使用如下函数测试具体是失败还是读到<code>EOF</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 不是EOF返回0，否则返回非0</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">feof</span><span class="params">(FILE *stream)</span></span>;</span><br><span class="line"><span class="comment">// 不是error返回0，否则返回非0</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">ferror</span><span class="params">(FILE *stream)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>putc()</code>、<code>fputc()</code>和<code>putchar()</code>和读取函数一样，这里就不详细介绍了。</p>
+<h3 id="流的读写-一次一行"><a href="#流的读写-一次一行" class="headerlink" title="流的读写(一次一行)"></a>流的读写(一次一行)</h3><p>一次一行的标准I/O读写函数有3个：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 成功返回s，错误或者读到EOF返回NULL</span></span><br><span class="line"><span class="function"><span class="keyword">char</span> *<span class="title">fgets</span><span class="params">(<span class="keyword">char</span> *s, <span class="keyword">int</span> size, FILE *stream)</span></span>;</span><br><span class="line"><span class="comment">// 成功返回非0，否则返回EOF</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fputs</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *s, FILE *stream)</span></span>;</span><br><span class="line"><span class="comment">// 直接输出到stdout</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">puts</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *s)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>gets()</code>函数已经被弃用，因此一共只有3个一次读一行的标准I/O函数。<code>fgets()</code>用于读取一行，读到<code>\n</code>停止，或者读了<code>size - 1</code>个字符。如果第<code>size - 1</code>个字符不是<code>\n</code>，那么函数返回不完整的一行，再次调用<code>fgets()</code>会继续读剩下的部分。不管是否读完，<code>s</code>的最后一个字符一定是<code>\0</code>。</p>
+<p><code>fputs()</code>和<code>puts()</code>都将一个以<code>\0</code>结尾的字符串写出去，<code>fputs()</code>和<code>puts()</code>的输出都不包括<code>\0</code>，但<code>fputs()</code>可以没有<code>\n</code>，但<code>puts()</code>会添加一个<code>\n</code>。<code>puts()</code>将字符串输出到<code>stdout</code>。和<code>write()</code>一样，如果要输出的字符串中有<code>\0</code>，那么只输出<code>\0</code>前的字符串。</p>
+<p>下面给出一个<code>fputs()</code>和<code>fgets()</code>的函数例子：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fgets_fputs_test</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    FILE *wfp, *rfp;</span><br><span class="line">    wfp = fopen(<span class="string">&quot;./fgets_fputs_test.txt&quot;</span>, <span class="string">&quot;w+&quot;</span>);</span><br><span class="line">    <span class="keyword">if</span> (wfp == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 测试1, 写入的string中间有\0，测试结果只会输出ab。</span></span><br><span class="line">    <span class="comment">// char wrBuf[5];</span></span><br><span class="line">    <span class="comment">// memset(wrBuf, 0, sizeof(wrBuf));</span></span><br><span class="line">    <span class="comment">// wrBuf[0] = &#x27;a&#x27;;</span></span><br><span class="line">    <span class="comment">// wrBuf[1] = &#x27;b&#x27;;</span></span><br><span class="line">    <span class="comment">// wrBuf[2] = 0;</span></span><br><span class="line">    <span class="comment">// wrBuf[3] = &#x27;c&#x27;; </span></span><br><span class="line">    <span class="comment">// if (fputs(wrBuf, wfp) &lt; 0)</span></span><br><span class="line">    <span class="comment">//     return -1;</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 测试2, 写入的string没有\0，测试结果还是输出ab。</span></span><br><span class="line">    <span class="comment">// char wrBuf[2];</span></span><br><span class="line">    <span class="comment">// memset(wrBuf, 0, sizeof(wrBuf));</span></span><br><span class="line">    <span class="comment">// wrBuf[0] = &#x27;a&#x27;;</span></span><br><span class="line">    <span class="comment">// wrBuf[1] = &#x27;b&#x27;;</span></span><br><span class="line">    <span class="comment">// if (fputs(wrBuf, wfp) &lt; 0)</span></span><br><span class="line">    <span class="comment">//     return -1;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// fputs一次写一个char[], 不是按\n为结尾写，而是按\0为结尾写，</span></span><br><span class="line">    <span class="comment">// 但最终不会将\0写入流。</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">fputs</span>(<span class="string">&quot;this is a test...&quot;</span>, wfp) &lt; <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">fputs</span>(<span class="string">&quot;this is a new \ntest...&quot;</span>, wfp) &lt; <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 写文件时，fputs使用全缓冲，只有文件关闭、缓冲写满、进程</span></span><br><span class="line">    <span class="comment">// 关闭时才将缓冲中数据写入I/O。我们也可以使用fflush()函数</span></span><br><span class="line">    <span class="comment">// 手动将缓冲中数据写入I/O。</span></span><br><span class="line">    <span class="comment">// fflush(wfp);</span></span><br><span class="line">    <span class="comment">// sleep(10);</span></span><br><span class="line">    fclose(wfp);</span><br><span class="line"></span><br><span class="line">    rfp = fopen(<span class="string">&quot;./fgets_fputs_test.txt&quot;</span>, <span class="string">&quot;r+&quot;</span>);</span><br><span class="line">    <span class="keyword">if</span> (rfp == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">char</span> buf[<span class="number">60</span>];</span><br><span class="line">    <span class="comment">// fgets()读取n个字符，如果提前(n - 1字节)遇到EOF, \n，则</span></span><br><span class="line">    <span class="comment">// 结束读取，并且添加\0在返回的buf中；最多读n - 1字节，最后</span></span><br><span class="line">    <span class="comment">// 一个字节存放\0。fgets()会在遇到EOF时返回0。</span></span><br><span class="line">    <span class="comment">// 函数输出结果：</span></span><br><span class="line">    <span class="comment">//this</span></span><br><span class="line">    <span class="comment">// is </span></span><br><span class="line">    <span class="comment">//a te</span></span><br><span class="line">    <span class="comment">//st..</span></span><br><span class="line">    <span class="comment">//.thi</span></span><br><span class="line">    <span class="comment">//s is</span></span><br><span class="line">    <span class="comment">// a n</span></span><br><span class="line">    <span class="comment">//ew </span></span><br><span class="line">    <span class="comment">//</span></span><br><span class="line">    <span class="comment">//test</span></span><br><span class="line">    <span class="comment">//...</span></span><br><span class="line">    <span class="keyword">while</span> (fgets(buf, <span class="number">5</span>, rfp) != <span class="literal">NULL</span>)</span><br><span class="line">        <span class="comment">// puts()输出到stdout</span></span><br><span class="line">        <span class="built_in">puts</span>(buf);</span><br><span class="line"></span><br><span class="line">    fclose(rfp);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="流的读写-二进制-直接读写"><a href="#流的读写-二进制-直接读写" class="headerlink" title="流的读写(二进制/直接读写)"></a>流的读写(二进制/直接读写)</h3><p>二进制读写函数主要是为了解决上面函数的一个问题：输出时，遇到<code>\0</code>就会停止。我们可以用<code>fputc()</code>函数一个一个的字符/字节输出，但效率比较慢；如果用<code>fputs()</code>的话，又不能处理有<code>\0</code>的字符串；因此这种情况就需要使用二进制读写函数了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">size_t</span> <span class="title">fread</span><span class="params">(<span class="keyword">void</span> *ptr, <span class="keyword">size_t</span> size, <span class="keyword">size_t</span> nmemb, FILE *stream)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">size_t</span> <span class="title">fwrite</span><span class="params">(<span class="keyword">const</span> <span class="keyword">void</span> *ptr, <span class="keyword">size_t</span> size, <span class="keyword">size_t</span> nmemb, FILE *stream)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>下面直接引用手册说明：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">The function fread() reads nmemb items of data, each size bytes long, from the stream pointed to by stream, storing them at the location given by ptr.</span><br><span class="line"></span><br><span class="line">The function fwrite() writes nmemb items of data, each size bytes long, to  the stream pointed to by stream, obtaining them from the location given by ptr.</span><br></pre></td></tr></table></figure>
+<h2 id="格式化I-O"><a href="#格式化I-O" class="headerlink" title="格式化I/O"></a>格式化I/O</h2><p>什么是格式化I/O？格式化I/O就是<code>printf()</code>, <code>sprintf()</code>, <code>snprintf()</code>, <code>scanf()</code>等函数，这类函数如果是对<code>stdin</code>和<code>stdout</code>进行操作，那么还是满足行缓存；如果对文件流进行操作，那么就是全缓存；如果只是对本地变量进行操作(比如<code>sprintf()</code>)，那么是没有缓冲的。比如下面这段代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">char</span> buffer[<span class="number">12</span>];</span><br><span class="line">    <span class="keyword">int</span> r;</span><br><span class="line"></span><br><span class="line">    r = <span class="built_in">sprintf</span>(buffer,<span class="string">&quot;The total is %d&quot;</span>,<span class="number">5</span>+<span class="number">8</span>);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">puts</span>(buffer);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d characters stored\n&quot;</span>,r);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span>(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>即使<code>&quot;The total is %d&quot;</code>没有换行符，字符串也会写入<code>buffer</code>；但如果<code>&quot;%d characters stored\n&quot;</code>不加换行符，那么这段字符串是不会输出到<code>stdout</code>的。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这部分内容比较繁杂，但只要搞懂了文件和标准I/O的区别，不同I/O缓冲的区别，那么还是比较好理解的。下面是一些比较重要的知识点，需要好好理解记忆：</p>
+<ol>
+<li>文件I/O都不带缓冲；</li>
+<li>标准I/O默认情况下基本都带缓冲，但它们缓冲类型不同；</li>
+<li>当缓冲写满、文件关闭、进程结束、调用<code>fflush()</code>, <code>fseek()</code>等函数时，缓冲中数据写入内核；</li>
+<li>对于行缓冲，遇到<code>\n</code>也要将缓冲中数据写入内核；</li>
+<li>上面3 - 4针对的是写操作；对于读操作，先从内核读取适量数据到缓冲，然后再慢慢读取；</li>
+<li>不管有无用户空间的缓存，内核空间都是有缓冲的。</li>
+</ol>
+
+    </article>
+    <!-- license  -->
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href= "/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/" title= "Linux编程基础2 - 进程间通信(匿名管道)">
+                    <div class="nextTitle">Linux编程基础2 - 进程间通信(匿名管道)</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/" title= "Socket编程基础7 - 定时器">
+                    <div class="prevTitle">Socket编程基础7 - 定时器</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- gitalk评论 -->
+
+    <!-- utteranc评论 -->
+
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    <!-- 评论 -->
+</main>
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- 不蒜子  -->
+    
+    <div class="busuanzi-container">
+    
+     
+    <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+    
+    </div>
+    
+</footer>
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:50vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%90%86%E8%A7%A3%E6%9C%89-%E6%97%A0%E7%BC%93%E5%86%B2"><span class="toc-number">1.</span> <span class="toc-text">理解有&#x2F;无缓冲</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E4%BB%B6I-O"><span class="toc-number">2.</span> <span class="toc-text">文件I&#x2F;O</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#open%E5%92%8Cclose"><span class="toc-number">2.1.</span> <span class="toc-text">open和close</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#write%E5%92%8Cread"><span class="toc-number">2.2.</span> <span class="toc-text">write和read</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#lseek%E5%92%8C%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="toc-number">2.3.</span> <span class="toc-text">lseek和文件描述符</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A0%87%E5%87%86I-O"><span class="toc-number">3.</span> <span class="toc-text">标准I&#x2F;O</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%93%E5%86%B2"><span class="toc-number">3.1.</span> <span class="toc-text">缓冲</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%81%E7%9A%84%E6%89%93%E5%BC%80-%E5%85%B3%E9%97%AD"><span class="toc-number">3.2.</span> <span class="toc-text">流的打开&#x2F;关闭</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%81%E7%9A%84%E8%AF%BB%E5%86%99-%E4%B8%80%E6%AC%A1%E4%B8%80%E4%B8%AA%E5%AD%97%E7%AC%A6"><span class="toc-number">3.3.</span> <span class="toc-text">流的读写(一次一个字符)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%81%E7%9A%84%E8%AF%BB%E5%86%99-%E4%B8%80%E6%AC%A1%E4%B8%80%E8%A1%8C"><span class="toc-number">3.4.</span> <span class="toc-text">流的读写(一次一行)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%81%E7%9A%84%E8%AF%BB%E5%86%99-%E4%BA%8C%E8%BF%9B%E5%88%B6-%E7%9B%B4%E6%8E%A5%E8%AF%BB%E5%86%99"><span class="toc-number">3.5.</span> <span class="toc-text">流的读写(二进制&#x2F;直接读写)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A0%BC%E5%BC%8F%E5%8C%96I-O"><span class="toc-number">4.</span> <span class="toc-text">格式化I&#x2F;O</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 15
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/03</span><a class="archive-post-title" href= "/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" >Socket编程基础8 - 进程池和并发模型</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/26</span><a class="archive-post-title" href= "/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/24</span><a class="archive-post-title" href= "/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础4 - 进程间通信(共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/22</span><a class="archive-post-title" href= "/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/" >Linux编程基础3 - 进程间通信(信号量)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/21</span><a class="archive-post-title" href= "/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/" >Linux编程基础2 - 进程间通信(匿名管道)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/" >Linux编程基础1 - I/O总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/13</span><a class="archive-post-title" href= "/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/" >Socket编程基础7 - 定时器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/12</span><a class="archive-post-title" href= "/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/" >Socket编程基础6 - 高级IO函数</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/15</span><a class="archive-post-title" href= "/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/" >Socket编程基础5 - epoll实战</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/29</span><a class="archive-post-title" href= "/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/" >Socket编程基础4 - IO多路复用函数总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span><a class="archive-post-title" href= "/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/" >Socket编程基础3 - IO多路复用基础</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/" >Socket编程基础2 - 基本回射服务实例</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/" >Socket编程基础1 - 套接字和TCP/IP入门</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2017 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/09</span><a class="archive-post-title" href= "/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/" >一文搞懂C语言回调函数</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2016 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/31</span><a class="archive-post-title" href= "/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/" >C函数调用过程原理及函数栈帧分析(X86)</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="C/C++"><span class="iconfont-archer">&#xe606;</span>C/C++</span>
+    
+        <span class="sidebar-tag-name" data-tags="栈"><span class="iconfont-archer">&#xe606;</span>栈</span>
+    
+        <span class="sidebar-tag-name" data-tags="X86汇编"><span class="iconfont-archer">&#xe606;</span>X86汇编</span>
+    
+        <span class="sidebar-tag-name" data-tags="Linux编程"><span class="iconfont-archer">&#xe606;</span>Linux编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="多进程"><span class="iconfont-archer">&#xe606;</span>多进程</span>
+    
+        <span class="sidebar-tag-name" data-tags="IPC"><span class="iconfont-archer">&#xe606;</span>IPC</span>
+    
+        <span class="sidebar-tag-name" data-tags="管道"><span class="iconfont-archer">&#xe606;</span>管道</span>
+    
+        <span class="sidebar-tag-name" data-tags="信号量"><span class="iconfont-archer">&#xe606;</span>信号量</span>
+    
+        <span class="sidebar-tag-name" data-tags="文件I/O"><span class="iconfont-archer">&#xe606;</span>文件I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="标准I/O"><span class="iconfont-archer">&#xe606;</span>标准I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="共享内存"><span class="iconfont-archer">&#xe606;</span>共享内存</span>
+    
+        <span class="sidebar-tag-name" data-tags="UNP"><span class="iconfont-archer">&#xe606;</span>UNP</span>
+    
+        <span class="sidebar-tag-name" data-tags="网络编程"><span class="iconfont-archer">&#xe606;</span>网络编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="socket"><span class="iconfont-archer">&#xe606;</span>socket</span>
+    
+        <span class="sidebar-tag-name" data-tags="回射服务"><span class="iconfont-archer">&#xe606;</span>回射服务</span>
+    
+        <span class="sidebar-tag-name" data-tags="I/O模型"><span class="iconfont-archer">&#xe606;</span>I/O模型</span>
+    
+        <span class="sidebar-tag-name" data-tags="select()"><span class="iconfont-archer">&#xe606;</span>select()</span>
+    
+        <span class="sidebar-tag-name" data-tags="定时器"><span class="iconfont-archer">&#xe606;</span>定时器</span>
+    
+        <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》"><span class="iconfont-archer">&#xe606;</span>《Linux高性能服务器编程》</span>
+    
+        <span class="sidebar-tag-name" data-tags="poll()"><span class="iconfont-archer">&#xe606;</span>poll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="epoll()"><span class="iconfont-archer">&#xe606;</span>epoll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="ET/LT"><span class="iconfont-archer">&#xe606;</span>ET/LT</span>
+    
+        <span class="sidebar-tag-name" data-tags="进程池"><span class="iconfont-archer">&#xe606;</span>进程池</span>
+    
+        <span class="sidebar-tag-name" data-tags="并发模型"><span class="iconfont-archer">&#xe606;</span>并发模型</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="技术广角"><span class="iconfont-archer">&#xe60a;</span>技术广角</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "John Doe"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+</html>
+
+

@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" >
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+    <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="定时器用于处理周期性事件，其中比较重要的应用就是定期检测客户端是否还在连接，如果没有那么就需要关闭服务器与其的socket通信。因为Linux并不是实时操作系统，因此不可能保证定时器一定是按照某个周期运行，但我们需要想办法尽量提高定时器的精度。这里主要介绍3种定时器 - 基于链表的定时器，基于时间轮的定时器和基于最小堆的定时器。除了使用的容器不一样，这3种定时器的基本原理都是一样的，通过学习基于链">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Socket编程基础7 - 定时器">
+<meta property="og:url" content="http://example.com/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="定时器用于处理周期性事件，其中比较重要的应用就是定期检测客户端是否还在连接，如果没有那么就需要关闭服务器与其的socket通信。因为Linux并不是实时操作系统，因此不可能保证定时器一定是按照某个周期运行，但我们需要想办法尽量提高定时器的精度。这里主要介绍3种定时器 - 基于链表的定时器，基于时间轮的定时器和基于最小堆的定时器。除了使用的容器不一样，这3种定时器的基本原理都是一样的，通过学习基于链">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-06-13T21:43:15.000Z">
+<meta property="article:modified_time" content="2020-06-15T17:36:48.000Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="C&#x2F;C++">
+<meta property="article:tag" content="Linux编程">
+<meta property="article:tag" content="网络编程">
+<meta property="article:tag" content="socket">
+<meta property="article:tag" content="定时器">
+<meta property="article:tag" content="《Linux高性能服务器编程》">
+<meta name="twitter:card" content="summary">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    
+    <title>Socket编程基础7 - 定时器 · 从零到负一</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href= "/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <link rel="stylesheet" href= "/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href= "/assets/touxiang.png" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script" />
+    <link rel="preload" href="/scripts/main.js" as="script" />
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >从零到负一</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">Socket编程基础7 - 定时器</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>从零到负一</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:50vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            Socket编程基础7 - 定时器
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "C/C++">C/C++</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "Linux编程">Linux编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "网络编程">网络编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "socket">socket</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "定时器">定时器</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "《Linux高性能服务器编程》">《Linux高性能服务器编程》</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>Word count: <span class="post-count word-count">1.8k</span>Reading time: <span class="post-count reading-time">7 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2020/06/13</span>
+                    
+                    <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                        <span class="iconfont-archer">&#xe602;</span>
+                        <span id="busuanzi_value_page_pv"></span>
+                    </span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+  console.log("userAgent:" + browser.versions.userAgent);
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded');
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <p>定时器用于处理周期性事件，其中比较重要的应用就是定期检测客户端是否还在连接，如果没有那么就需要关闭服务器与其的socket通信。因为Linux并不是实时操作系统，因此不可能保证定时器一定是按照某个周期运行，但我们需要想办法尽量提高定时器的精度。这里主要介绍3种定时器 - 基于链表的定时器，基于时间轮的定时器和基于最小堆的定时器。除了使用的容器不一样，这3种定时器的基本原理都是一样的，通过学习基于链表的定时器，我们就可以掌握其它两种定时器。</p>
+<a id="more"></a>
+
+
+
+<h2 id="定时器的基本设计思路"><a href="#定时器的基本设计思路" class="headerlink" title="定时器的基本设计思路"></a>定时器的基本设计思路</h2><p>这里定时器的实现是通过<code>SIGALRM</code>信号实现的。在一个进程中，我们定期接收<code>SIGALRM</code>信号；在<code>SIGALRM</code>的信号处理函数中，我们需要设置一个标记让主进程知道进程已经触发timeout了。等回到主进程时，主进程将根据这个标志对事件进行处理。处理定时事件的函数我们一般叫做心跳函数，也就是<code>tick()</code>函数。事件处理函数一般都放在主进程中，因为在运行事件处理函数时，内核将不能接收绝大多数相同的信号(信号不会被放入队列)，因此信号处理函数必须短(这个和嵌入式中ISR必须短一个道理)。</p>
+<h2 id="基于链表的定时器"><a href="#基于链表的定时器" class="headerlink" title="基于链表的定时器"></a>基于链表的定时器</h2><p>这篇文章的所有代码来自《Linux高性能服务器编程》，这里我只做部分代码讲解，详细代码查看<a target="_blank" rel="noopener" href="https://github.com/raichen/LinuxServerCodes">Linux高性能服务器编程源码</a>。</p>
+<h3 id="定时器的实现"><a href="#定时器的实现" class="headerlink" title="定时器的实现"></a>定时器的实现</h3><p>这里的定时器用于实现关闭已经断开连接的客户端(客户端的非正常关闭会导致服务器不知道其已经关闭)。定时器有三个结构体(类) - 客户数据、定时器和定时器链表：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">client_data</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    sockaddr_in address;</span><br><span class="line">    <span class="keyword">int</span> sockfd;</span><br><span class="line">    <span class="keyword">char</span> buf[ BUFFER_SIZE ];</span><br><span class="line">    util_timer* timer;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">util_timer</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    util_timer() : prev( <span class="literal">NULL</span> ), next( <span class="literal">NULL</span> )&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">   <span class="keyword">time_t</span> expire; </span><br><span class="line">   <span class="keyword">void</span> (*cb_func)( client_data* );</span><br><span class="line">   client_data* user_data;</span><br><span class="line">   util_timer* prev;</span><br><span class="line">   util_timer* next;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">sort_timer_lst</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p><code>client_data</code>是客户数据，有socket描述符、地址信息、buffer和定时器指针；<code>util_timer</code>是定时器类，有过期时间(<code>expire</code>)，客户数据指针(<code>user_data</code>)，事件处理回调函数(<code>cb_func</code>)以及用于链表的<code>prev</code>和<code>next</code>指针。通过它们的定义我们可以看出，客户数据可以访问其定时器；定时器也可以访问其绑定的客户数据。所有的定时器都被添加到<code>sort_timer_lst</code>中，我们可以通过遍历链表找到我们需要的定时器。</p>
+<p><code>sort_timer_lst</code>有下面几个成员函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">add_timer</span><span class="params">(util_timer* timer)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">adjust_timer</span><span class="params">(util_timer* timer)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">del_timer</span><span class="params">(util_timer* timer)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">tick</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">add_timer</span><span class="params">(util_timer* timer, util_timer* lst_head)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>void add_timer(util_timer* timer)</code>将定时器按照过期时间从小到大的顺序插入链表，对于插入位置不在头节点的定时器，需要调用<code>void add_timer(util_timer* timer, util_timer* lst_head)</code>，这个函数的时间复杂度是<code>O(n)</code>；<code>void adjust_timer(util_timer* timer)</code>用于调整定时器的过期时间，调整后需要用<code>add_timer()</code>将其重新添加到链表；<code>void del_timer(util_timer* timer)</code>用于删除定时器，定时器超时的时候会用到这个函数；<code>tick()</code>是心跳函数，其实现如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">tick</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span>( !head )</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">printf</span>( <span class="string">&quot;timer tick\n&quot;</span> );</span><br><span class="line">    <span class="keyword">time_t</span> cur = time( <span class="literal">NULL</span> );</span><br><span class="line">    util_timer* tmp = head;</span><br><span class="line">    <span class="keyword">while</span>( tmp )</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>( cur &lt; tmp-&gt;expire )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        tmp-&gt;cb_func( tmp-&gt;user_data );</span><br><span class="line">        head = tmp-&gt;next;</span><br><span class="line">        <span class="keyword">if</span>( head )</span><br><span class="line">        &#123;</span><br><span class="line">            head-&gt;prev = <span class="literal">NULL</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">delete</span> tmp;</span><br><span class="line">        tmp = head;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>tick()</code>函数通过判断当前时间和过期时间来确定定时器是否已经超时。对于超时的定时器，首先需要调用它的回调函数(断开连接等)，然后再将其从链表中删除。</p>
+<h3 id="定时器实例"><a href="#定时器实例" class="headerlink" title="定时器实例"></a>定时器实例</h3><p>下面这个例子简单地说明了如何使上面定义的定时器，我们这里简单地看看定时器是怎么处理到期的：</p>
+<ol>
+<li>建立socket连接并调用<code>alarm()</code>；</li>
+<li>使用<code>epoll()</code>进行多路复用，1）接收到新的连接；2）进程定时器到期；3）正常读就绪。</li>
+<li><code>alarm()</code>设置的时间到期，产生<code>SIGALRM</code>信号；信号处理函数使用本地管道发送信息给主进程，表示定时器到期了；</li>
+<li>多路复用的2）就绪，标记定时器到期了；</li>
+<li>定时器的处理函数遍历链表，结束并删除已经超时的连接；</li>
+<li>再次调用<code>alarm()</code>来定时。</li>
+</ol>
+<p>这个设计精度不高，因为1）即使收到了<code>SIGALRM</code>信号，还需要在<code>epoll_wait()</code>处等待，如果有新的连接来，还需要等待新的连接完成；2）链表操作效率低，每次添加/修改/查询都需要<code>O(n)</code>的时间。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sig_handler</span><span class="params">( <span class="keyword">int</span> sig )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> save_errno = errno;</span><br><span class="line">    <span class="keyword">int</span> msg = sig;</span><br><span class="line">    send( pipefd[<span class="number">1</span>], ( <span class="keyword">char</span>* )&amp;msg, <span class="number">1</span>, <span class="number">0</span> );</span><br><span class="line">    errno = save_errno;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">timer_handler</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    timer_lst.tick();</span><br><span class="line">    alarm( TIMESLOT );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">cb_func</span><span class="params">( client_data* user_data )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    epoll_ctl( epollfd, EPOLL_CTL_DEL, user_data-&gt;sockfd, <span class="number">0</span> );</span><br><span class="line">    assert( user_data );</span><br><span class="line">    close( user_data-&gt;sockfd );</span><br><span class="line">    <span class="built_in">printf</span>( <span class="string">&quot;close fd %d\n&quot;</span>, user_data-&gt;sockfd );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">( <span class="keyword">int</span> argc, <span class="keyword">char</span>* argv[] )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// add all the interesting signals here</span></span><br><span class="line">    addsig( SIGALRM );</span><br><span class="line">    addsig( SIGTERM );</span><br><span class="line">    <span class="keyword">bool</span> stop_server = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    client_data* users = <span class="keyword">new</span> client_data[FD_LIMIT]; </span><br><span class="line">    <span class="keyword">bool</span> timeout = <span class="literal">false</span>;</span><br><span class="line">    alarm( TIMESLOT );</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>( !stop_server )</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">int</span> number = epoll_wait( epollfd, events, MAX_EVENT_NUMBER, <span class="number">-1</span> );</span><br><span class="line">        <span class="keyword">if</span> ( ( number &lt; <span class="number">0</span> ) &amp;&amp; ( errno != EINTR ) )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">printf</span>( <span class="string">&quot;epoll failure\n&quot;</span> );</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    </span><br><span class="line">        <span class="keyword">for</span> ( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; number; i++ )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">int</span> sockfd = events[i].data.fd;</span><br><span class="line">            </span><br><span class="line">            <span class="keyword">if</span>( sockfd == listenfd )</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">client_address</span>;</span></span><br><span class="line">                <span class="keyword">socklen_t</span> client_addrlength = <span class="keyword">sizeof</span>( client_address );</span><br><span class="line">                <span class="keyword">int</span> connfd = accept( listenfd, ( struct sockaddr* )&amp;client_address, &amp;client_addrlength );</span><br><span class="line">                addfd( epollfd, connfd );</span><br><span class="line">                users[connfd].address = client_address;</span><br><span class="line">                users[connfd].sockfd = connfd;</span><br><span class="line">                util_timer* timer = <span class="keyword">new</span> util_timer;</span><br><span class="line">                timer-&gt;user_data = &amp;users[connfd];</span><br><span class="line">                timer-&gt;cb_func = cb_func;</span><br><span class="line">                <span class="keyword">time_t</span> cur = time( <span class="literal">NULL</span> );</span><br><span class="line">                timer-&gt;expire = cur + <span class="number">3</span> * TIMESLOT;</span><br><span class="line">                users[connfd].timer = timer;</span><br><span class="line">                timer_lst.add_timer( timer );</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>( ( sockfd == pipefd[<span class="number">0</span>] ) &amp;&amp; ( events[i].events &amp; EPOLLIN ) )</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">int</span> sig;</span><br><span class="line">                <span class="keyword">char</span> signals[<span class="number">1024</span>];</span><br><span class="line">                ret = recv( pipefd[<span class="number">0</span>], signals, <span class="keyword">sizeof</span>( signals ), <span class="number">0</span> );</span><br><span class="line">				<span class="comment">// ret == 0 or -1</span></span><br><span class="line">                <span class="comment">// ...</span></span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">for</span>( <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; ret; ++i )</span><br><span class="line">                    &#123;</span><br><span class="line">                        <span class="keyword">switch</span>( signals[i] )</span><br><span class="line">                        &#123;</span><br><span class="line">                            <span class="keyword">case</span> SIGALRM:</span><br><span class="line">                            &#123;</span><br><span class="line">                                timeout = <span class="literal">true</span>;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                            <span class="keyword">case</span> SIGTERM:</span><br><span class="line">                            &#123;</span><br><span class="line">                                stop_server = <span class="literal">true</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>(  events[i].events &amp; EPOLLIN )</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="built_in">memset</span>( users[sockfd].buf, <span class="string">&#x27;\0&#x27;</span>, BUFFER_SIZE );</span><br><span class="line">                ret = recv( sockfd, users[sockfd].buf, BUFFER_SIZE<span class="number">-1</span>, <span class="number">0</span> );</span><br><span class="line">                <span class="built_in">printf</span>( <span class="string">&quot;get %d bytes of client data %s from %d\n&quot;</span>, ret, users[sockfd].buf, sockfd );</span><br><span class="line">                util_timer* timer = users[sockfd].timer;</span><br><span class="line">				<span class="comment">// ret == 0 or -1</span></span><br><span class="line">                <span class="comment">// delete timer and cleanup</span></span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">if</span>( timer )</span><br><span class="line">                    &#123;</span><br><span class="line">                        <span class="keyword">time_t</span> cur = time( <span class="literal">NULL</span> );</span><br><span class="line">                        timer-&gt;expire = cur + <span class="number">3</span> * TIMESLOT;</span><br><span class="line">                        <span class="built_in">printf</span>( <span class="string">&quot;adjust timer once\n&quot;</span> );</span><br><span class="line">                        timer_lst.adjust_timer( timer );</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">// others</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>( timeout )</span><br><span class="line">        &#123;</span><br><span class="line">            timer_handler();</span><br><span class="line">            timeout = <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="基于时间轮和最小堆的定时器"><a href="#基于时间轮和最小堆的定时器" class="headerlink" title="基于时间轮和最小堆的定时器"></a>基于时间轮和最小堆的定时器</h2><p>链表实现的定时器，效率较低，我们可以使用更好的数据结构来优化定时器容器的操作。除了链表，最常见的就是时间轮和最小堆，也有用红黑树实现的。我这里就不贴时间轮和最小堆定时器的源代码了，只要搞懂了链表定时器怎么实现以及相应的数据结构，设计其他类型的定时器也就很容易了。</p>
+<p>之后需要阅读相关开源库的代码，看看真正的项目中是如何设计、使用定时器的。</p>
+
+    </article>
+    <!-- license  -->
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href= "/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/" title= "Linux编程基础1 - I/O总结">
+                    <div class="nextTitle">Linux编程基础1 - I/O总结</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/" title= "Socket编程基础6 - 高级IO函数">
+                    <div class="prevTitle">Socket编程基础6 - 高级IO函数</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- gitalk评论 -->
+
+    <!-- utteranc评论 -->
+
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    <!-- 评论 -->
+</main>
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- 不蒜子  -->
+    
+    <div class="busuanzi-container">
+    
+     
+    <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+    
+    </div>
+    
+</footer>
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:50vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8%E7%9A%84%E5%9F%BA%E6%9C%AC%E8%AE%BE%E8%AE%A1%E6%80%9D%E8%B7%AF"><span class="toc-number">1.</span> <span class="toc-text">定时器的基本设计思路</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E9%93%BE%E8%A1%A8%E7%9A%84%E5%AE%9A%E6%97%B6%E5%99%A8"><span class="toc-number">2.</span> <span class="toc-text">基于链表的定时器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.1.</span> <span class="toc-text">定时器的实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8%E5%AE%9E%E4%BE%8B"><span class="toc-number">2.2.</span> <span class="toc-text">定时器实例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E6%97%B6%E9%97%B4%E8%BD%AE%E5%92%8C%E6%9C%80%E5%B0%8F%E5%A0%86%E7%9A%84%E5%AE%9A%E6%97%B6%E5%99%A8"><span class="toc-number">3.</span> <span class="toc-text">基于时间轮和最小堆的定时器</span></a></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 15
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/03</span><a class="archive-post-title" href= "/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" >Socket编程基础8 - 进程池和并发模型</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/26</span><a class="archive-post-title" href= "/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/24</span><a class="archive-post-title" href= "/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/" >Linux编程基础4 - 进程间通信(共享内存)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/22</span><a class="archive-post-title" href= "/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/" >Linux编程基础3 - 进程间通信(信号量)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/21</span><a class="archive-post-title" href= "/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/" >Linux编程基础2 - 进程间通信(匿名管道)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/" >Linux编程基础1 - I/O总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/13</span><a class="archive-post-title" href= "/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/" >Socket编程基础7 - 定时器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/12</span><a class="archive-post-title" href= "/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/" >Socket编程基础6 - 高级IO函数</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/15</span><a class="archive-post-title" href= "/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/" >Socket编程基础5 - epoll实战</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/29</span><a class="archive-post-title" href= "/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/" >Socket编程基础4 - IO多路复用函数总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span><a class="archive-post-title" href= "/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/" >Socket编程基础3 - IO多路复用基础</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/" >Socket编程基础2 - 基本回射服务实例</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/" >Socket编程基础1 - 套接字和TCP/IP入门</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2017 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/09</span><a class="archive-post-title" href= "/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/" >一文搞懂C语言回调函数</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2016 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/31</span><a class="archive-post-title" href= "/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/" >C函数调用过程原理及函数栈帧分析(X86)</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="C/C++"><span class="iconfont-archer">&#xe606;</span>C/C++</span>
+    
+        <span class="sidebar-tag-name" data-tags="栈"><span class="iconfont-archer">&#xe606;</span>栈</span>
+    
+        <span class="sidebar-tag-name" data-tags="X86汇编"><span class="iconfont-archer">&#xe606;</span>X86汇编</span>
+    
+        <span class="sidebar-tag-name" data-tags="Linux编程"><span class="iconfont-archer">&#xe606;</span>Linux编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="多进程"><span class="iconfont-archer">&#xe606;</span>多进程</span>
+    
+        <span class="sidebar-tag-name" data-tags="IPC"><span class="iconfont-archer">&#xe606;</span>IPC</span>
+    
+        <span class="sidebar-tag-name" data-tags="管道"><span class="iconfont-archer">&#xe606;</span>管道</span>
+    
+        <span class="sidebar-tag-name" data-tags="信号量"><span class="iconfont-archer">&#xe606;</span>信号量</span>
+    
+        <span class="sidebar-tag-name" data-tags="文件I/O"><span class="iconfont-archer">&#xe606;</span>文件I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="标准I/O"><span class="iconfont-archer">&#xe606;</span>标准I/O</span>
+    
+        <span class="sidebar-tag-name" data-tags="共享内存"><span class="iconfont-archer">&#xe606;</span>共享内存</span>
+    
+        <span class="sidebar-tag-name" data-tags="UNP"><span class="iconfont-archer">&#xe606;</span>UNP</span>
+    
+        <span class="sidebar-tag-name" data-tags="网络编程"><span class="iconfont-archer">&#xe606;</span>网络编程</span>
+    
+        <span class="sidebar-tag-name" data-tags="socket"><span class="iconfont-archer">&#xe606;</span>socket</span>
+    
+        <span class="sidebar-tag-name" data-tags="回射服务"><span class="iconfont-archer">&#xe606;</span>回射服务</span>
+    
+        <span class="sidebar-tag-name" data-tags="I/O模型"><span class="iconfont-archer">&#xe606;</span>I/O模型</span>
+    
+        <span class="sidebar-tag-name" data-tags="select()"><span class="iconfont-archer">&#xe606;</span>select()</span>
+    
+        <span class="sidebar-tag-name" data-tags="定时器"><span class="iconfont-archer">&#xe606;</span>定时器</span>
+    
+        <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》"><span class="iconfont-archer">&#xe606;</span>《Linux高性能服务器编程》</span>
+    
+        <span class="sidebar-tag-name" data-tags="poll()"><span class="iconfont-archer">&#xe606;</span>poll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="epoll()"><span class="iconfont-archer">&#xe606;</span>epoll()</span>
+    
+        <span class="sidebar-tag-name" data-tags="ET/LT"><span class="iconfont-archer">&#xe606;</span>ET/LT</span>
+    
+        <span class="sidebar-tag-name" data-tags="进程池"><span class="iconfont-archer">&#xe606;</span>进程池</span>
+    
+        <span class="sidebar-tag-name" data-tags="并发模型"><span class="iconfont-archer">&#xe606;</span>并发模型</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="技术广角"><span class="iconfont-archer">&#xe60a;</span>技术广角</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "John Doe"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+</html>
+
+
