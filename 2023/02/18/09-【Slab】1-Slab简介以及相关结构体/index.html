@@ -19,17 +19,17 @@
         <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
     
     <meta name="description" content="">
-    <meta name="description" content="最近开始学习Slab，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的Slab知识。 为什么需要Slab关于这点，书上和网上都说了很多，我这里简单地说3点：  可以分配比PAGE_SIZE更小的内存空间，大大地降低了内部碎片； 效率更高。第一，Slab的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，Slab可以更快地分配和释放经常使用的对象（释放后并不还给伙">
+    <meta name="description" content="最近开始学习slab，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的slab知识。 为什么需要slab关于这点，书上和网上都说了很多，我这里简单地说3点：  可以分配比PAGE_SIZE更小的内存空间，大大地降低了内部碎片； 效率更高。第一，slab的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，slab可以更快地分配和释放经常使用的对象（释放后并不还给伙">
 <meta property="og:type" content="article">
-<meta property="og:title" content="09. 【Slab】1 - Slab简介以及相关结构体">
+<meta property="og:title" content="09. 【slab】1 - slab简介以及相关结构体">
 <meta property="og:url" content="http://example.com/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="最近开始学习Slab，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的Slab知识。 为什么需要Slab关于这点，书上和网上都说了很多，我这里简单地说3点：  可以分配比PAGE_SIZE更小的内存空间，大大地降低了内部碎片； 效率更高。第一，Slab的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，Slab可以更快地分配和释放经常使用的对象（释放后并不还给伙">
+<meta property="og:description" content="最近开始学习slab，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的slab知识。 为什么需要slab关于这点，书上和网上都说了很多，我这里简单地说3点：  可以分配比PAGE_SIZE更小的内存空间，大大地降低了内部碎片； 效率更高。第一，slab的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，slab可以更快地分配和释放经常使用的对象（释放后并不还给伙">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://i.imgur.com/QUzUAoK.png">
 <meta property="og:image" content="https://i.imgur.com/bPpG5LI.png">
 <meta property="article:published_time" content="2023-02-18T08:26:21.000Z">
-<meta property="article:modified_time" content="2023-02-26T04:22:22.723Z">
+<meta property="article:modified_time" content="2023-03-04T06:14:55.932Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Linux内核">
 <meta property="article:tag" content="Linux 2.6.11">
@@ -40,7 +40,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <link rel="icon" href="/assets/touxiang.png">
     
-    <title>09. 【Slab】1 - Slab简介以及相关结构体 · 从零到负一</title>
+    <title>09. 【slab】1 - slab简介以及相关结构体 · 从零到负一</title>
     <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
 /* This file is meant as a standalone workflow for
 - testing support for link[rel=preload]
@@ -265,7 +265,7 @@
                 <a href="/">从零到负一</a>
             </div>
             <div class="post-title header-element">
-                <a href="#" class="post-name">09. 【Slab】1 - Slab简介以及相关结构体</a>
+                <a href="#" class="post-name">09. 【slab】1 - slab简介以及相关结构体</a>
             </div>
         </div>
     
@@ -311,7 +311,7 @@
         <h1 class="intro-title">
             <!-- 主页  -->
             
-                09. 【Slab】1 - Slab简介以及相关结构体
+                09. 【slab】1 - slab简介以及相关结构体
             <!-- 404 -->
             
         </h1>
@@ -500,35 +500,35 @@
             <div class="container container-unloaded">
                 <main class="main post-page">
     <article class="article-entry">
-        <p>最近开始学习<code>Slab</code>，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的<code>Slab</code>知识。</p>
-<h2 id="为什么需要Slab"><a href="#为什么需要Slab" class="headerlink" title="为什么需要Slab"></a>为什么需要Slab</h2><p>关于这点，书上和网上都说了很多，我这里简单地说3点：</p>
+        <p>最近开始学习<code>slab</code>，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的<code>slab</code>知识。</p>
+<h2 id="为什么需要slab"><a href="#为什么需要slab" class="headerlink" title="为什么需要slab"></a>为什么需要slab</h2><p>关于这点，书上和网上都说了很多，我这里简单地说3点：</p>
 <ol>
 <li>可以分配比<code>PAGE_SIZE</code>更小的内存空间，大大地降低了内部碎片；</li>
-<li>效率更高。第一，<code>Slab</code>的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，<code>Slab</code>可以更快地分配和释放经常使用的对象（释放后并不还给伙伴系统，<code>Slab</code>可以之后再使用）；</li>
-<li>对物理缓存更友好，效率更高。<code>Slab</code>分配内存空间时会尽量减少物理缓存的冲突。</li>
+<li>效率更高。第一，<code>slab</code>的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，<code>slab</code>可以更快地分配和释放经常使用的对象（释放后并不还给伙伴系统，<code>slab</code>可以之后再使用）；</li>
+<li>对物理缓存更友好，效率更高。<code>slab</code>分配内存空间时会尽量减少物理缓存的冲突。</li>
 </ol>
-<h2 id="相关数据结构"><a href="#相关数据结构" class="headerlink" title="相关数据结构"></a>相关数据结构</h2><p><code>Slab</code>是多个结构体共同组成的系统，因此在理解上会有些困难，下图展示了一个简化版的<code>Slab</code>系统。我们可以看到，<code>Slab</code>系统至少需要4个结构体 - 高速缓存，<code>slab</code>，对象和<code>page</code>（外加一个per-CPU的array_cache）。<code>page</code>在这里就不介绍了，下面主要介绍其它几种结构体。</p>
+<h2 id="相关数据结构"><a href="#相关数据结构" class="headerlink" title="相关数据结构"></a>相关数据结构</h2><p><code>slab</code>是多个结构体共同组成的系统，因此在理解上会有些困难，下图展示了一个简化版的<code>slab</code>系统。我们可以看到，<code>slab</code>系统至少需要4个结构体 - 高速缓存，<code>slab</code>，对象和<code>page</code>（外加一个<code>array_cache</code>）。<code>page</code>在这里就不介绍了，下面主要介绍其它几种结构体。</p>
 <p>一定要注意，这里所指的高速缓存，是软件意义上的，和硬件缓存没有任何关系！同时，对象是没有结构体的，对象就是大小一定的连续内存块。</p>
 <p><img src="https://i.imgur.com/QUzUAoK.png"></p>
-<center>图一：简化版的Slab结构体间的关系</center>
+<center>图一：简化版的slab结构体间的关系</center>
 
-<h3 id="struct-kmem-cache-s"><a href="#struct-kmem-cache-s" class="headerlink" title="struct kmem_cache_s"></a>struct kmem_cache_s</h3><p>在<code>kmem_cache_s</code>中，有两个结构体需要说明，分别是<code>array_cache</code>和<code>kmem_list3</code>。<code>array_cache</code>是每个CPU内部对象空间的描述符，<code>kmem_list3</code>则包含了该高速缓存连接<code>Slab</code>的三种链表。</p>
-<h4 id="struct-array-cache"><a href="#struct-array-cache" class="headerlink" title="struct array_cache"></a>struct array_cache</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> &#123;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> avail;      <span class="comment">// 指向本地高速缓存中可使用对象的指针的个数，也是第一个空槽的下标</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> limit;      <span class="comment">// 指向本地高速缓存中可使用对象的指针的最大个数</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> batchcount; <span class="comment">// 本地高速缓存填充/腾空时使用的块大小 </span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> touched;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<h4 id="struct-kmem-list3"><a href="#struct-kmem-list3" class="headerlink" title="struct kmem_list3"></a>struct kmem_list3</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_list3</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>   <span class="title">slabs_partial</span>;</span> <span class="comment">// 包含空闲和非空闲Slab</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>   <span class="title">slabs_full</span>;</span>    <span class="comment">// 不包含空闲Slab</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>   <span class="title">slabs_free</span>;</span>    <span class="comment">// 只包含空闲Slab</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>      free_objects;  <span class="comment">// 高速缓存中空闲对象的个数</span></span><br><span class="line">    <span class="keyword">int</span>                free_touched;  </span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>      next_reap;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> *<span class="title">shared</span>;</span>       <span class="comment">// 指向所有CPU共享的一个本地高速缓存的指针</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_s</span> &#123;</span></span><br><span class="line"><span class="comment">/* 1) per-cpu data, touched during every alloc/free */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> *<span class="title">array</span>[<span class="title">NR_CPUS</span>];</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        batchcount;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        limit;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 2) touched by every alloc &amp; free from the backend */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_list3</span>    <span class="title">lists</span>;</span></span><br><span class="line">    <span class="comment">/* NUMA: kmem_3list_t *nodelists[MAX_NUMNODES] */</span></span><br><span class="line">    <span class="comment">// kmem_cache中的每个对象大小都是一样的，每个slab的大小也是一样的</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        objsize;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        flags;        <span class="comment">/* constant flags */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        num;          <span class="comment">/* # of objs per slab */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        free_limit;   <span class="comment">/* upper limit of objects in the lists */</span></span><br><span class="line">    <span class="keyword">spinlock_t</span>          spinlock;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 3) cache_grow/shrink */</span></span><br><span class="line">    <span class="comment">/* order of pgs per slab (2^n) */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        gfporder;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* force GFP flags, e.g. GFP_DMA */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        gfpflags;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">size_t</span>              colour;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        colour_off;  <span class="comment">// Slab中最小的对齐偏移单位</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        colour_next; <span class="comment">// 下一个被分配的Slab的颜色</span></span><br><span class="line">    <span class="keyword">kmem_cache_t</span>        *slabp_cache;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        slab_size;   <span class="comment">// 单个Slab的大小，这里只包括Slab和对象的描述符</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        dflags;      <span class="comment">/* dynamic flags */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* constructor func */</span></span><br><span class="line">    <span class="keyword">void</span> (*ctor)(<span class="keyword">void</span> *, <span class="keyword">kmem_cache_t</span> *, <span class="keyword">unsigned</span> <span class="keyword">long</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* de-constructor func */</span></span><br><span class="line">    <span class="keyword">void</span> (*dtor)(<span class="keyword">void</span> *, <span class="keyword">kmem_cache_t</span> *, <span class="keyword">unsigned</span> <span class="keyword">long</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 4) cache creation/removal */</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">char</span>          *name;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>    <span class="title">next</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 5) statistics */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> STATS</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        num_active;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        num_allocations;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        high_mark;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        grown;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        reaped;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        errors;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        max_freeable;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        node_allocs;</span><br><span class="line">    <span class="keyword">atomic_t</span>             allochit;</span><br><span class="line">    <span class="keyword">atomic_t</span>             allocmiss;</span><br><span class="line">    <span class="keyword">atomic_t</span>             freehit;</span><br><span class="line">    <span class="keyword">atomic_t</span>             freemiss;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DEBUG</span></span><br><span class="line">    <span class="keyword">int</span>                  dbghead;</span><br><span class="line">    <span class="keyword">int</span>                  reallen;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<h3 id="struct-slab"><a href="#struct-slab" class="headerlink" title="struct slab"></a>struct slab</h3><p>该结构体是<code>Slab</code>描述符，它通过<code>kmem_list3</code>和<code>kmem_cache_s</code>联系起来。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * struct slab</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Manages the objs in a slab. Placed either at the beginning of mem allocated</span></span><br><span class="line"><span class="comment"> * for a slab, or allocated from an general cache.</span></span><br><span class="line"><span class="comment"> * Slabs are chained into three list: fully used, partial, fully free slabs.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">slab</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>    <span class="title">list</span>;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>       colouroff; <span class="comment">// 第一个对象的偏移</span></span><br><span class="line">    <span class="keyword">void</span>                *s_mem;    <span class="comment">// 第一个对象的地址</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        inuse;       <span class="comment">// 当前正在使用的非空闲Slab中的对象个数</span></span><br><span class="line">    <span class="keyword">kmem_bufctl_t</span>       <span class="built_in">free</span>;      <span class="comment">// 下一个空闲对象的下标，它的类型是unsigned short</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<h2 id="Slab的基本组成"><a href="#Slab的基本组成" class="headerlink" title="Slab的基本组成"></a>Slab的基本组成</h2><p><code>Slab</code>各种操作的具体分析我会在之后的笔记中详细记录，这里只是在大的方向上介绍下<code>Slab</code>是如何组成的。</p>
+<h3 id="struct-kmem-cache-s"><a href="#struct-kmem-cache-s" class="headerlink" title="struct kmem_cache_s"></a>struct kmem_cache_s</h3><p>在<code>kmem_cache_s</code>中，有两个结构体需要说明，分别是<code>array_cache</code>和<code>kmem_list3</code>。<code>array_cache</code>是CPU本地高速缓存的描述符，<code>kmem_list3</code>则包含了该高速缓存连接<code>slab</code>的三种链表。</p>
+<h4 id="struct-array-cache"><a href="#struct-array-cache" class="headerlink" title="struct array_cache"></a>struct array_cache</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> &#123;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> avail;      <span class="comment">// 指向本地高速缓存中可使用对象的指针的个数，也是第一个空槽的下标</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> limit;      <span class="comment">// 指向本地高速缓存中可使用对象的指针的最大个数</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> batchcount; <span class="comment">// 本地高速缓存填充/腾空时使用的对象块的数量</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> touched;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h4 id="struct-kmem-list3"><a href="#struct-kmem-list3" class="headerlink" title="struct kmem_list3"></a>struct kmem_list3</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_list3</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>   <span class="title">slabs_partial</span>;</span> <span class="comment">// 包含空闲和非空闲slab</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>   <span class="title">slabs_full</span>;</span>    <span class="comment">// 不包含空闲slab</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>   <span class="title">slabs_free</span>;</span>    <span class="comment">// 只包含空闲slab</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>      free_objects;  <span class="comment">// 高速缓存中空闲对象的个数</span></span><br><span class="line">    <span class="keyword">int</span>                free_touched;  </span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>      next_reap;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> *<span class="title">shared</span>;</span>       <span class="comment">// 指向所有CPU共享的一个本地高速缓存的指针</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache_s</span> &#123;</span></span><br><span class="line"><span class="comment">/* 1) per-cpu data, touched during every alloc/free */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> *<span class="title">array</span>[<span class="title">NR_CPUS</span>];</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        batchcount;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        limit;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 2) touched by every alloc &amp; free from the backend */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">kmem_list3</span>    <span class="title">lists</span>;</span></span><br><span class="line">    <span class="comment">/* NUMA: kmem_3list_t *nodelists[MAX_NUMNODES] */</span></span><br><span class="line">    <span class="comment">// kmem_cache中的每个对象大小都是一样的，每个slab的大小也是一样的</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        objsize;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        flags;        <span class="comment">/* constant flags */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        num;          <span class="comment">/* # of objs per slab */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        free_limit;   <span class="comment">/* upper limit of objects in the lists */</span></span><br><span class="line">    <span class="keyword">spinlock_t</span>          spinlock;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 3) cache_grow/shrink */</span></span><br><span class="line">    <span class="comment">/* order of pgs per slab (2^n) */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        gfporder;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* force GFP flags, e.g. GFP_DMA */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        gfpflags;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">size_t</span>              colour;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        colour_off;  <span class="comment">// slab中最小的对齐偏移单位</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        colour_next; <span class="comment">// 下一个被分配的slab的颜色</span></span><br><span class="line">    <span class="keyword">kmem_cache_t</span>        *slabp_cache;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        slab_size;   <span class="comment">// 单个slab的大小，这里只包括slab和对象的描述符</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        dflags;      <span class="comment">/* dynamic flags */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* constructor func */</span></span><br><span class="line">    <span class="keyword">void</span> (*ctor)(<span class="keyword">void</span> *, <span class="keyword">kmem_cache_t</span> *, <span class="keyword">unsigned</span> <span class="keyword">long</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* de-constructor func */</span></span><br><span class="line">    <span class="keyword">void</span> (*dtor)(<span class="keyword">void</span> *, <span class="keyword">kmem_cache_t</span> *, <span class="keyword">unsigned</span> <span class="keyword">long</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 4) cache creation/removal */</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">char</span>          *name;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>    <span class="title">next</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 5) statistics */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> STATS</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        num_active;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        num_allocations;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        high_mark;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        grown;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        reaped;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        errors;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        max_freeable;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>        node_allocs;</span><br><span class="line">    <span class="keyword">atomic_t</span>             allochit;</span><br><span class="line">    <span class="keyword">atomic_t</span>             allocmiss;</span><br><span class="line">    <span class="keyword">atomic_t</span>             freehit;</span><br><span class="line">    <span class="keyword">atomic_t</span>             freemiss;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DEBUG</span></span><br><span class="line">    <span class="keyword">int</span>                  dbghead;</span><br><span class="line">    <span class="keyword">int</span>                  reallen;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h3 id="struct-slab"><a href="#struct-slab" class="headerlink" title="struct slab"></a>struct slab</h3><p>该结构体是<code>slab</code>描述符，它通过<code>kmem_list3</code>和<code>kmem_cache_s</code>联系起来。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * struct slab</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Manages the objs in a slab. Placed either at the beginning of mem allocated</span></span><br><span class="line"><span class="comment"> * for a slab, or allocated from an general cache.</span></span><br><span class="line"><span class="comment"> * slabs are chained into three list: fully used, partial, fully free slabs.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">slab</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>    <span class="title">list</span>;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span>       colouroff; <span class="comment">// slab中的偏移，该偏移包含slab和对象的描述符（如果它们在slab内部）</span></span><br><span class="line">    <span class="keyword">void</span>                *s_mem;    <span class="comment">// 第一个对象的地址</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        inuse;     <span class="comment">// 当前正在使用的非空闲slab中的对象个数</span></span><br><span class="line">    <span class="keyword">kmem_bufctl_t</span>       <span class="built_in">free</span>;      <span class="comment">// 下一个空闲对象的下标，它的类型是unsigned short</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h2 id="slab的基本组成"><a href="#slab的基本组成" class="headerlink" title="slab的基本组成"></a>slab的基本组成</h2><p><code>slab</code>各种操作的具体分析我会在之后的笔记中详细记录，这里只是在大的方向上介绍下<code>slab</code>是如何组成的。</p>
 <p>初始化阶段和之后的使用是有一些区别的（初始化也需要分配内存空间，并且存在“鸡生蛋，蛋生鸡”的问题），要搞懂初始化，通过阅读源码，我总结出3点：</p>
 <ol>
-<li> 我们需要明确一点，在伙伴系统完成后，系统可以正常地按页进行分配内存空间。因此，只要是需要分配页的地方，即使<code>Slab</code>没有初始化完成也是可以用的；</li>
-<li> 对于结构体的内存空间申请（就像我们使用<code>malloc()</code>给结构体申请内存空间），在<code>Slab</code>初始化完成前，内核是不能直接完成这项任务的。内核是通过使用全局变量（静态）的方法解决<code>Slab</code>初始化完成前需要给结构体申请内存空间的难题；</li>
-<li> <code>Slab</code>分为两种，一种是专用高速缓存，一种是普通高速缓存。第一种是针对某一特定作用设置的高速缓存，第二种是普通的，任何结构体、任何设备都可以通过<code>kmalloc()</code>来使用的高速缓存， 初始化时就先建立普通高速缓存，然后使用<code>kmalloc()</code>来给结构体等分配动态的内存空间。</li>
+<li> 我们需要明确一点，在伙伴系统完成后，系统可以正常地按页进行分配内存空间。因此，只要是需要分配页的地方，即使<code>slab</code>没有初始化完成也是可以用的；</li>
+<li> 对于结构体的内存空间申请（就像我们使用<code>malloc()</code>给结构体申请内存空间），在<code>slab</code>初始化完成前，内核是不能直接完成这项任务的。内核是通过使用全局变量（静态）的方法解决<code>slab</code>初始化完成前需要给结构体申请内存空间的难题；</li>
+<li> <code>slab</code>分为两种，一种是专用高速缓存，一种是普通高速缓存。第一种是针对某一特定作用设置的高速缓存，第二种是普通的，任何结构体、任何设备都可以通过<code>kmalloc()</code>来使用的高速缓存。初始化时就先建立了普通高速缓存池，我们可以使用<code>kmalloc()</code>来给结构体等分配动态的内存空间。</li>
 </ol>
 <p>有了这些基础，我们就可以看看下图了：<br><img src="https://i.imgur.com/bPpG5LI.png"></p>
-<center>图二：高速缓存、Slab和对象</center>
+<center>图二：高速缓存、slab和对象</center>
 
-<p>内核通过<code>cache_chain</code>将<code>kmem_cache</code>链接起来，第一个<code>kmem_cache</code>是<code>cache_cache</code>，这是静态分配的缓存（这里只分配了描述符，并没有分配对应的<code>Slab</code>、对象以及CPU内部的缓存描述符等）。之后的缓存也都是在此基础上连入<code>cache_chain</code>的。每个<code>kmem_cache</code>又有CPU内部<code>Slab</code>对象的地址以及三条<code>Slab</code>的链表。注意，上图和2.6.11的内核有些区别，比如2.6.11中没有<code>nodelists</code>，但其它部分都比较类似。</p>
+<p>内核通过<code>cache_chain</code>将<code>kmem_cache</code>链接起来，第一个<code>kmem_cache</code>是<code>cache_cache</code>，这是静态分配的缓存（这里只分配了描述符，并没有分配对应的<code>slab</code>、对象以及CPU本地缓存描述符等）。之后的高速缓存也都是在此基础上连入<code>cache_chain</code>的。每个<code>kmem_cache</code>又有CPU内部<code>slab</code>对象的地址以及三条<code>slab</code>的链表。注意，上图和2.6.11的内核有些区别，比如2.6.11中没有<code>nodelists</code>，但其它部分都比较类似。</p>
 
     </article>
     <!-- license -->
@@ -538,8 +538,8 @@
         <li class="next">
             
                 <div class="nextSlogan">Next Post</div>
-                <a href="/2023/02/22/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/" title="10. 【Slab】2 - Slab的基本操作 - kmem_cache_init()">
-                    <div class="nextTitle">10. 【Slab】2 - Slab的基本操作 - kmem_cache_init()</div>
+                <a href="/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/" title="10. 【slab】2 - slab的基本操作 - kmem_cache_init()">
+                    <div class="nextTitle">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</div>
                 </a>
             
         </li>
@@ -672,7 +672,7 @@
                 <div class="toc-catalog">
                     <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
                 </div>
-                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81Slab"><span class="toc-number">1.</span> <span class="toc-text">为什么需要Slab</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">2.</span> <span class="toc-text">相关数据结构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#struct-kmem-cache-s"><span class="toc-number">2.1.</span> <span class="toc-text">struct kmem_cache_s</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#struct-array-cache"><span class="toc-number">2.1.1.</span> <span class="toc-text">struct array_cache</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#struct-kmem-list3"><span class="toc-number">2.1.2.</span> <span class="toc-text">struct kmem_list3</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#struct-slab"><span class="toc-number">2.2.</span> <span class="toc-text">struct slab</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%BB%84%E6%88%90"><span class="toc-number">3.</span> <span class="toc-text">Slab的基本组成</span></a></li></ol>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81slab"><span class="toc-number">1.</span> <span class="toc-text">为什么需要slab</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">2.</span> <span class="toc-text">相关数据结构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#struct-kmem-cache-s"><span class="toc-number">2.1.</span> <span class="toc-text">struct kmem_cache_s</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#struct-array-cache"><span class="toc-number">2.1.1.</span> <span class="toc-text">struct array_cache</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#struct-kmem-list3"><span class="toc-number">2.1.2.</span> <span class="toc-text">struct kmem_list3</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#struct-slab"><span class="toc-number">2.2.</span> <span class="toc-text">struct slab</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%BB%84%E6%88%90"><span class="toc-number">3.</span> <span class="toc-text">slab的基本组成</span></a></li></ol>
             </div>
         
         <!-- sidebar -->
@@ -776,7 +776,27 @@
         
         
         
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
@@ -891,7 +911,7 @@
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 18
+        Total : 20
         </div>
         <!-- search  -->
         
@@ -907,14 +927,26 @@
             
         
         <li class="archive-post-item">
+            <span class="archive-post-date">02/27</span>
+            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
             <span class="archive-post-date">02/22</span>
-            <a class="archive-post-title" href="/2023/02/22/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">10. 【Slab】2 - Slab的基本操作 - kmem_cache_init()</a>
+            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - Slab的基本操作 - kmem_cache_create()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/20</span>
+            <a class="archive-post-title" href="/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/18</span>
-            <a class="archive-post-title" href="/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/">09. 【Slab】1 - Slab简介以及相关结构体</a>
+            <a class="archive-post-title" href="/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/">09. 【slab】1 - slab简介以及相关结构体</a>
         </li>
     
         
@@ -1081,6 +1113,16 @@
                 Linux编程
             </span>
         
+            <span class="sidebar-tag-name" data-tags="文件I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                文件I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="标准I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                标准I/O
+            </span>
+        
             <span class="sidebar-tag-name" data-tags="多进程">
                 <span class="iconfont-archer">&#xe606;</span>
                 多进程
@@ -1094,16 +1136,6 @@
             <span class="sidebar-tag-name" data-tags="管道">
                 <span class="iconfont-archer">&#xe606;</span>
                 管道
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="文件I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                文件I/O
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="标准I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                标准I/O
             </span>
         
             <span class="sidebar-tag-name" data-tags="信号量">
