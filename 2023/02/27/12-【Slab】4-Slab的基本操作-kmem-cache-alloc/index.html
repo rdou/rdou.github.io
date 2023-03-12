@@ -19,15 +19,15 @@
         <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
     
     <meta name="description" content="">
-    <meta name="description" content="在上一篇 11. 【Slab】3 - Slab的基本操作 - kmem_cache_create() 中，我们提到kmem_cache_alloc()函数，在这篇笔记中，我们开始分析这个函数。 kmem_cache_alloc()这个函数只是一个封装函数，它仅仅是调用__cache_alloc()。 123456789101112&#x2F;** * kmem_cache_alloc - Allocate">
+    <meta name="description" content="在上一篇 11. 【Slab】3 - Slab的基本操作 - kmem_cache_create() 中，我们提到kmem_cache_alloc()函数，在这篇笔记中，我们开始分析这个函数。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()">
 <meta property="og:url" content="http://example.com/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="在上一篇 11. 【Slab】3 - Slab的基本操作 - kmem_cache_create() 中，我们提到kmem_cache_alloc()函数，在这篇笔记中，我们开始分析这个函数。 kmem_cache_alloc()这个函数只是一个封装函数，它仅仅是调用__cache_alloc()。 123456789101112&#x2F;** * kmem_cache_alloc - Allocate">
+<meta property="og:description" content="在上一篇 11. 【Slab】3 - Slab的基本操作 - kmem_cache_create() 中，我们提到kmem_cache_alloc()函数，在这篇笔记中，我们开始分析这个函数。">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-02-28T00:40:06.000Z">
-<meta property="article:modified_time" content="2023-03-05T08:45:17.924Z">
+<meta property="article:modified_time" content="2023-03-05T16:44:13.938Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Linux内核">
 <meta property="article:tag" content="Linux 2.6.11">
@@ -498,6 +498,8 @@
                 <main class="main post-page">
     <article class="article-entry">
         <p>在上一篇 11. 【Slab】3 - Slab的基本操作 - kmem_cache_create() 中，我们提到<code>kmem_cache_alloc()</code>函数，在这篇笔记中，我们开始分析这个函数。</p>
+<a id="more"></a>
+
 <h2 id="kmem-cache-alloc"><a href="#kmem-cache-alloc" class="headerlink" title="kmem_cache_alloc()"></a>kmem_cache_alloc()</h2><p>这个函数只是一个封装函数，它仅仅是调用<code>__cache_alloc()</code>。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * kmem_cache_alloc - Allocate an object</span></span><br><span class="line"><span class="comment"> * @cachep: The cache to allocate from.</span></span><br><span class="line"><span class="comment"> * @flags: See kmalloc().</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Allocate an object from this cache.  The flags are only relevant</span></span><br><span class="line"><span class="comment"> * if the cache has no available objects.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> * <span class="title">kmem_cache_alloc</span> <span class="params">(<span class="keyword">kmem_cache_t</span> *cachep, <span class="keyword">int</span> flags)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> __cache_alloc(cachep, flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h2 id="cache-alloc"><a href="#cache-alloc" class="headerlink" title="__cache_alloc()"></a>__cache_alloc()</h2><p>这个函数逻辑上是比较简单的，首先判断<code>ac-&gt;avail</code>是否为0，然后根据情况从CPU的本地缓存获取对象或者通过<code>cache_alloc_refill()</code>获取对象。</p>
@@ -770,6 +772,10 @@
         
         
     
+        
+        
+        
+        
         
         
         
