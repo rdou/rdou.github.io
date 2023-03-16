@@ -435,11 +435,7 @@
             <div class="abstract-content">
                 这一章节我其实不想写，因为我对并发模型还不是很熟悉，只是想分析下《Linux高性能服务器编程》中的几个例子。
 半同步/半异步进程池实例进程池通过先创建一定数量的进程，从而减少程序运行时创建进程的开销。这里的半同步/半异步并不是指I/O的同步和异步，而是指并发模式中的同步/异步。简单来说，同步就是顺序运行的程序，异步就是非顺序运行的程序，比如处理信号事件等。
-半同步/半异步指的是在该模型中，有部分进程是同步，有部分进程是异步的。比如图1这个模型：
-
-图1. 半同步/半异步进程模型
-
-主线程/进程是异步的，它会异步地接收客户端发送的连接、数据传输请求，然后将其放入队列，子线程/进程会通过队列...
+半同步/半异步指的是在该模型中，有...
             </div>
             <!-- read more -->
             
@@ -1325,16 +1321,6 @@
                 Linux编程
             </span>
         
-            <span class="sidebar-tag-name" data-tags="文件I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                文件I/O
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="标准I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                标准I/O
-            </span>
-        
             <span class="sidebar-tag-name" data-tags="多进程">
                 <span class="iconfont-archer">&#xe606;</span>
                 多进程
@@ -1345,6 +1331,21 @@
                 IPC
             </span>
         
+            <span class="sidebar-tag-name" data-tags="共享内存">
+                <span class="iconfont-archer">&#xe606;</span>
+                共享内存
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="文件I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                文件I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="标准I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                标准I/O
+            </span>
+        
             <span class="sidebar-tag-name" data-tags="管道">
                 <span class="iconfont-archer">&#xe606;</span>
                 管道
@@ -1353,11 +1354,6 @@
             <span class="sidebar-tag-name" data-tags="信号量">
                 <span class="iconfont-archer">&#xe606;</span>
                 信号量
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="共享内存">
-                <span class="iconfont-archer">&#xe606;</span>
-                共享内存
             </span>
         
             <span class="sidebar-tag-name" data-tags="UNP">

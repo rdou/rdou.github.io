@@ -769,7 +769,7 @@
 
 回调函数就是一个通过函数指针调用的函数。如果你把函数的指针（地址）作为参数传递给另一个函数，当这个指针被用来调用其所指向的函数时，我们就说这是回调函数。回调函数不是由该函数的实现方直接调用，而是在特定的事件或条件发生时由另外的一方调用的，用于对该事件或条件进行响应。
 
-假设我们要使用一个排序函数来对数组进行排序，那么在主程序(Main program)中，我们先通过库，选择一个库排序函数(Library function)。但排序算法有很多，有冒泡排序，选择排序，快速排序，归并排序。同时，我们也可能需要对特殊的对象进行排序，比如...
+假设我们要使用一个排序函数来对数组进行排序，那么在主程序(Mai...
             </div>
             <!-- read more -->
             
@@ -805,8 +805,7 @@
             </a>
             <div class="abstract-content">
                 在x86的计算机系统中，内存空间中的栈主要用于保存函数的参数，返回值，返回地址，本地变量等。一切的函数调用都要将不同的数据、地址压入或者弹出栈。因此，为了更好地理解函数的调用，我们需要先来看看栈是怎么工作的。
-栈是什么？简单来说，栈是一种LIFO形式的数据结构，所有的数据都是后进先出。这种形式的数据结构正好满足我们调用函数的方式: 父函数调用子函数，父函数在前，子函数在后；返回时，子函数先返回，父函数后返回。栈支持两种基本操作，push和pop。push将数据压入栈中，pop将栈中的数据弹出并存储到指定寄存器或者内存中。
-这里是一个push操作的例子。假设我们有一个栈，其中黄色部分是已经...
+栈是什么？简单来说，栈是一种LIFO形式的数据结构，所有的数据都是后进先出。这种形式的数据结构正好满足我们调用函数的方式: 父函数调用子函数，父函数在前，子函数在后；返回时，子函数先返...
             </div>
             <!-- read more -->
             
@@ -1356,16 +1355,6 @@
                 Linux编程
             </span>
         
-            <span class="sidebar-tag-name" data-tags="文件I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                文件I/O
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="标准I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                标准I/O
-            </span>
-        
             <span class="sidebar-tag-name" data-tags="多进程">
                 <span class="iconfont-archer">&#xe606;</span>
                 多进程
@@ -1376,6 +1365,21 @@
                 IPC
             </span>
         
+            <span class="sidebar-tag-name" data-tags="共享内存">
+                <span class="iconfont-archer">&#xe606;</span>
+                共享内存
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="文件I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                文件I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="标准I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                标准I/O
+            </span>
+        
             <span class="sidebar-tag-name" data-tags="管道">
                 <span class="iconfont-archer">&#xe606;</span>
                 管道
@@ -1384,11 +1388,6 @@
             <span class="sidebar-tag-name" data-tags="信号量">
                 <span class="iconfont-archer">&#xe606;</span>
                 信号量
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="共享内存">
-                <span class="iconfont-archer">&#xe606;</span>
-                共享内存
             </span>
         
             <span class="sidebar-tag-name" data-tags="UNP">
