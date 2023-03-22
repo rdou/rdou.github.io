@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="到这，前面4篇slab笔记已经讨论了高速缓存、slab以及对象的分配。这篇笔记主要记录和释放、销毁相关的函数。在slab上花了太多时间和精力了，争取这是倒数第二篇，最后一篇准备综合的分析一些情况以及做总结。 不多说，直接进入正题吧。这篇笔记我主要讨论下面几个函数：  kmalloc()； kfree()； kmem_cache_free()； slab_destroy()； kmem_cache_">
+<meta property="og:type" content="article">
+<meta property="og:title" content="13. 【Slab】5 - Slab以及对象的释放和销毁">
+<meta property="og:url" content="http://example.com/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="到这，前面4篇slab笔记已经讨论了高速缓存、slab以及对象的分配。这篇笔记主要记录和释放、销毁相关的函数。在slab上花了太多时间和精力了，争取这是倒数第二篇，最后一篇准备综合的分析一些情况以及做总结。 不多说，直接进入正题吧。这篇笔记我主要讨论下面几个函数：  kmalloc()； kfree()； kmem_cache_free()； slab_destroy()； kmem_cache_">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-03-16T07:31:56.000Z">
+<meta property="article:modified_time" content="2023-03-22T04:19:31.686Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Linux 2.6.11">
+<meta property="article:tag" content="内存管理">
+<meta name="twitter:card" content="summary">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/touxiang.png">
+    
+    <title>13. 【Slab】5 - Slab以及对象的释放和销毁 · 从零到负一</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20211217" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20211217" as="style">
+    <link rel="stylesheet" href="/css/dark.css">
+    <link rel="stylesheet" href="/css/mobile.css?v=20211217" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20211217" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20211217" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header header-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>从零到负一</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">从零到负一</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">13. 【Slab】5 - Slab以及对象的释放和销毁</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:50vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+    
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                13. 【Slab】5 - Slab以及对象的释放和销毁
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+</div>
+
+                
+                <!-- 文章字数统计 -->
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2023/03/16</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>到这，前面4篇<code>slab</code>笔记已经讨论了高速缓存、<code>slab</code>以及对象的分配。这篇笔记主要记录和释放、销毁相关的函数。在<code>slab</code>上花了太多时间和精力了，争取这是倒数第二篇，最后一篇准备综合的分析一些情况以及做总结。</p>
+<p>不多说，直接进入正题吧。这篇笔记我主要讨论下面几个函数：</p>
+<ol>
+<li><code>kmalloc()</code>；</li>
+<li><code>kfree()</code>；</li>
+<li><code>kmem_cache_free()</code>；</li>
+<li><code>slab_destroy()</code>；</li>
+<li><code>kmem_cache_shrink()</code>；</li>
+<li><code>kmem_cache_destroy()</code>；</li>
+</ol>
+<h2 id="kmalloc"><a href="#kmalloc" class="headerlink" title="kmalloc()"></a><code>kmalloc()</code></h2><p><code>kmalloc()</code>函数主要用于普通高速缓存中对象的分配，通过源码可以看出，它可能调用<code>kmem_cache_alloc()</code>也可能调用<code>__kmalloc()</code>来分配对象。我没有看出这两种方法在这里有什么实质的区别，它们都是从<code>malloc_sizes[]</code>里面找合适的普通高速缓存，然后调用<code>__cache_alloc()</code>来分配对象空间。<code>__cache_alloc</code>这个函数在上一篇笔记 <a target="_blank" rel="noopener" href="https://rdou.github.io/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()</a>中已经详细介绍了，这里就不具体分析了。<code>kmalloc()</code>比较简单，下面直接看它的源码就行了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">void</span> *<span class="title">kmalloc</span><span class="params">(<span class="keyword">size_t</span> size, <span class="keyword">int</span> flags)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (__builtin_constant_p(size)) &#123;</span><br><span class="line">        <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> CACHE(x) \</span></span><br><span class="line">        <span class="keyword">if</span> (size &lt;= x) \</span><br><span class="line">            <span class="keyword">goto</span> found; \</span><br><span class="line">        <span class="keyword">else</span> \</span><br><span class="line">            i++;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&quot;kmalloc_sizes.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">undef</span> CACHE</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">extern</span> <span class="keyword">void</span> __you_cannot_kmalloc_that_much(<span class="keyword">void</span>);</span><br><span class="line">            __you_cannot_kmalloc_that_much();</span><br><span class="line">        &#125;</span><br><span class="line">found:</span><br><span class="line">        <span class="keyword">return</span> kmem_cache_alloc((flags &amp; GFP_DMA) ?</span><br><span class="line">            malloc_sizes[i].cs_dmacachep :</span><br><span class="line">            malloc_sizes[i].cs_cachep, flags);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> __kmalloc(size, flags);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * kmalloc - allocate memory</span></span><br><span class="line"><span class="comment"> * @size: how many bytes of memory are required.</span></span><br><span class="line"><span class="comment"> * @flags: the type of memory to allocate.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * kmalloc is the normal method of allocating memory</span></span><br><span class="line"><span class="comment"> * in the kernel.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * The @flags argument may be one of:</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * %GFP_USER - Allocate memory on behalf of user.  May sleep.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * %GFP_KERNEL - Allocate normal kernel ram.  May sleep.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * %GFP_ATOMIC - Allocation will not sleep.  Use inside interrupt handlers.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Additionally, the %GFP_DMA flag may be set to indicate the memory</span></span><br><span class="line"><span class="comment"> * must be suitable for DMA.  This can mean different things on different</span></span><br><span class="line"><span class="comment"> * platforms.  For example, on i386, it means that the memory must come</span></span><br><span class="line"><span class="comment"> * from the first 16MB.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">void</span> * __kmalloc (<span class="keyword">size_t</span> size, <span class="keyword">int</span> flags)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cache_sizes</span> *<span class="title">csizep</span> =</span> malloc_sizes;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (; csizep-&gt;cs_size; csizep++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (size &gt; csizep-&gt;cs_size)</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DEBUG</span></span><br><span class="line">        <span class="comment">/* This happens if someone tries to call</span></span><br><span class="line"><span class="comment">         * kmem_cache_create(), or kmalloc(), before</span></span><br><span class="line"><span class="comment">         * the generic caches are initialized.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        BUG_ON(csizep-&gt;cs_cachep == <span class="literal">NULL</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">        <span class="keyword">return</span> __cache_alloc(flags &amp; GFP_DMA ?</span><br><span class="line">             csizep-&gt;cs_dmacachep : csizep-&gt;cs_cachep, flags);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="kfree"><a href="#kfree" class="headerlink" title="kfree()"></a>kfree()</h2><p><code>kfree()</code>这个函数用于释放<code>kmalloc()</code>分配的对象空间，使用时要注意它只能释放<code>kmalloc()</code>分配的对象空间。如果给它一个其它的指针，那么很可能会出错。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * kfree - free previously allocated memory</span></span><br><span class="line"><span class="comment"> * @objp: pointer returned by kmalloc.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Don&#x27;t free memory not originally allocated by kmalloc()</span></span><br><span class="line"><span class="comment"> * or you will run into trouble.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">kfree</span> <span class="params">(<span class="keyword">const</span> <span class="keyword">void</span> *objp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">kmem_cache_t</span> *c;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> flags;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!objp)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    local_irq_save(flags);</span><br><span class="line">    kfree_debugcheck(objp);</span><br><span class="line">    <span class="comment">// 通过objp我们获取其高速缓存描述符，如果objp是一个随机的指针，那么就会获取一个错误的高速缓存描述符</span></span><br><span class="line">    <span class="comment">// 对这个错误的高速缓存描述符进行__cache_free()操作就会出错</span></span><br><span class="line">    c = GET_PAGE_CACHE(virt_to_page(objp));</span><br><span class="line">    __cache_free(c, (<span class="keyword">void</span>*)objp);</span><br><span class="line">    local_irq_restore(flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接下来我们看<code>__cache_free()</code>函数。<br>这个函数和<code>__cache_alloc()</code>类似，先去查看CPU的本地高速缓存，如果满了/没有，那么再去其它地方寻找合适的对象。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * __cache_free</span></span><br><span class="line"><span class="comment"> * Release an obj back to its cache. If the obj has a constructed</span></span><br><span class="line"><span class="comment"> * state, it must be in this state _before_ it is released.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Called with disabled ints.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">void</span> __cache_free (<span class="keyword">kmem_cache_t</span> *cachep, <span class="keyword">void</span>* objp)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> *<span class="title">ac</span> =</span> ac_data(cachep);</span><br><span class="line"></span><br><span class="line">    check_irq_off();</span><br><span class="line">    objp = cache_free_debugcheck(cachep, objp, __builtin_return_address(<span class="number">0</span>));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (likely(ac-&gt;avail &lt; ac-&gt;limit)) &#123;</span><br><span class="line">        STATS_INC_FREEHIT(cachep);</span><br><span class="line">        <span class="comment">// 注意，这里并没有销毁或者将对象清零，仅仅是重新将对象的指针放回array_cache</span></span><br><span class="line">        ac_entry(ac)[ac-&gt;avail++] = objp;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        STATS_INC_FREEMISS(cachep);</span><br><span class="line">        cache_flusharray(cachep, ac);</span><br><span class="line">        ac_entry(ac)[ac-&gt;avail++] = objp;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>下面我们看看如果<code>ac-&gt;avail &lt; ac-&gt;limit</code>，也就是<code>array_cache</code>满了，怎么办。在这种情况下，我们就需要调用<code>cache_flusharray()</code>函数了。</p>
+<h3 id="cache-flusharray"><a href="#cache-flusharray" class="headerlink" title="cache_flusharray()"></a>cache_flusharray()</h3><p>这个函数和<code>cache_alloc_refill()</code>看上去很像，都是去找高速缓存shared的<code>array_cache</code>。<br>这部分简单来说就是将部分本地缓存的对象地址放入shared的<code>array_cache</code>，这样本地缓存的<code>array_cache</code>就有空闲空间可以使用了。如果shared的<code>array_cache</code>空间也不够，那么只能释放部分本地缓存的<code>array_cache</code>了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">cache_flusharray</span> <span class="params">(<span class="keyword">kmem_cache_t</span>* cachep, struct array_cache *ac)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> batchcount;</span><br><span class="line"></span><br><span class="line">    batchcount = ac-&gt;batchcount;</span><br><span class="line"><span class="comment">// batchcount 要 &lt;= ac-&gt;avail，否则会出错</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DEBUG</span></span><br><span class="line">    BUG_ON(!batchcount || batchcount &gt; ac-&gt;avail);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    check_irq_off();</span><br><span class="line">    spin_lock(&amp;cachep-&gt;spinlock);</span><br><span class="line">    <span class="comment">// 这部分就是将本地的array_cache复制batchcount个对象到shared array_cache</span></span><br><span class="line">    <span class="keyword">if</span> (cachep-&gt;lists.shared) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> *<span class="title">shared_array</span> =</span> cachep-&gt;lists.shared;</span><br><span class="line">        <span class="keyword">int</span> max = shared_array-&gt;limit-shared_array-&gt;avail;</span><br><span class="line">        <span class="keyword">if</span> (max) &#123;</span><br><span class="line">            <span class="comment">// 还剩多少我们就移动多少</span></span><br><span class="line">            <span class="keyword">if</span> (batchcount &gt; max)</span><br><span class="line">                batchcount = max;</span><br><span class="line">            <span class="built_in">memcpy</span>(&amp;ac_entry(shared_array)[shared_array-&gt;avail],</span><br><span class="line">                    &amp;ac_entry(ac)[<span class="number">0</span>],</span><br><span class="line">                    <span class="keyword">sizeof</span>(<span class="keyword">void</span>*) * batchcount);</span><br><span class="line">            shared_array-&gt;avail += batchcount;</span><br><span class="line">            <span class="keyword">goto</span> free_done;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果shared array_cache也没有额外的空间了，那么只有释放部分本地的array_cache</span></span><br><span class="line">    free_block(cachep, &amp;ac_entry(ac)[<span class="number">0</span>], batchcount);</span><br><span class="line"></span><br><span class="line">free_done:</span><br><span class="line">    spin_unlock(&amp;cachep-&gt;spinlock);</span><br><span class="line">    <span class="comment">// 正常情况下这里不会是负数，前面开启debug后会检测 </span></span><br><span class="line">    ac-&gt;avail -= batchcount;</span><br><span class="line">    <span class="comment">// 把后面的移动过来覆盖前面已经复制或者释放的对象地址</span></span><br><span class="line">    memmove(&amp;ac_entry(ac)[<span class="number">0</span>], &amp;ac_entry(ac)[batchcount],</span><br><span class="line">            <span class="keyword">sizeof</span>(<span class="keyword">void</span>*)*ac-&gt;avail);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>通过上面分析，我们可以看出，<code>free</code>相关的函数只是将不用的对象返回缓存以便再次使用，并没有真正销毁清除任何东西。</p>
+<h2 id="kmalloc-free"><a href="#kmalloc-free" class="headerlink" title="kmalloc_free()"></a>kmalloc_free()</h2><p>这个函数就是直接调用<code>__cache_free()</code>，没有什么好讲的，直接跳过了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * kmem_cache_free - Deallocate an object</span></span><br><span class="line"><span class="comment"> * @cachep: The cache the allocation was from.</span></span><br><span class="line"><span class="comment"> * @objp: The previously allocated object.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Free an object which was previously allocated from this</span></span><br><span class="line"><span class="comment"> * cache.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">kmem_cache_free</span> <span class="params">(<span class="keyword">kmem_cache_t</span> *cachep, <span class="keyword">void</span> *objp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> flags;</span><br><span class="line"></span><br><span class="line">    local_irq_save(flags);</span><br><span class="line">    __cache_free(cachep, objp);</span><br><span class="line">    local_irq_restore(flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="slab-destroy"><a href="#slab-destroy" class="headerlink" title="slab_destroy()"></a>slab_destroy()</h2><p>上面几个函数都是在对象层面的，这里我们开始看看<code>slab</code>是如何销毁的。这个函数会调用对象的析构函数来销毁所有的对象（如果没有就什么都不做），然后再将该<code>slab</code>所在的页返还给伙伴系统。</p>
+<p>这个函数会在哪里被调用呢？<code>__cache_shrink()</code>, <code>free_block</code>和<code>cache_reap()</code>，其中前两个函数我们一个已经分析过，一个接下来就会进行分析。 </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Destroy all the objs in a slab, and release the mem back to the system.</span></span><br><span class="line"><span class="comment"> * Before calling the slab must have been unlinked from the cache.</span></span><br><span class="line"><span class="comment"> * The cache-lock is not held/needed.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">slab_destroy</span> <span class="params">(<span class="keyword">kmem_cache_t</span> *cachep, struct slab *slabp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// slabp-&gt;colouroff包括了offset + slab描述符 + 对象描述符</span></span><br><span class="line">    <span class="keyword">void</span> *addr = slabp-&gt;s_mem - slabp-&gt;colouroff;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DEBUG</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    <span class="keyword">if</span> (cachep-&gt;dtor) &#123;</span><br><span class="line">        <span class="keyword">int</span> i;</span><br><span class="line">        <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; cachep-&gt;num; i++) &#123;</span><br><span class="line">            <span class="keyword">void</span>* objp = slabp-&gt;s_mem+cachep-&gt;objsize*i;</span><br><span class="line">            (cachep-&gt;dtor)(objp, cachep, <span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (unlikely(cachep-&gt;flags &amp; SLAB_DESTROY_BY_RCU)) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">slab_rcu</span> *<span class="title">slab_rcu</span>;</span></span><br><span class="line"></span><br><span class="line">        slab_rcu = (struct slab_rcu *) slabp;</span><br><span class="line">        slab_rcu-&gt;cachep = cachep;</span><br><span class="line">        slab_rcu-&gt;addr = addr;</span><br><span class="line">        call_rcu(&amp;slab_rcu-&gt;head, kmem_rcu_free);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 这个函数根据slab所在页的起始地址，将2 ^ order个页还给伙伴系统</span></span><br><span class="line">        kmem_freepages(cachep, addr);</span><br><span class="line">        <span class="comment">// 我们还需要释放其在其它地方的slab以及对象描述符</span></span><br><span class="line">        <span class="keyword">if</span> (OFF_SLAB(cachep))</span><br><span class="line">            kmem_cache_free(cachep-&gt;slabp_cache, slabp);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="kmem-cache-shrink"><a href="#kmem-cache-shrink" class="headerlink" title="kmem_cache_shrink()"></a>kmem_cache_shrink()</h2><p>这个函数只是一个封装函数，我们直接来看它调用的函数<code>__cache_shrink()</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * kmem_cache_shrink - Shrink a cache.</span></span><br><span class="line"><span class="comment"> * @cachep: The cache to shrink.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Releases as many slabs as possible for a cache.</span></span><br><span class="line"><span class="comment"> * To help debugging, a zero exit status indicates all slabs were released.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">kmem_cache_shrink</span><span class="params">(<span class="keyword">kmem_cache_t</span> *cachep)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!cachep || in_interrupt())</span><br><span class="line">        BUG();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> __cache_shrink(cachep);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="cache-shrink"><a href="#cache-shrink" class="headerlink" title="__cache_shrink()"></a>__cache_shrink()</h3><p>这个函数除了在<code>kmem_cache_shrink()</code>中使用外，还在下一个介绍的函数<code>kmem_cache_destroy()</code>中使用。简单来说，这个函数就是尽量地释放高速缓存，它会对本地高速缓存、shared高速缓存以及处于空闲链表中的<code>slab</code>进行处理。它不会对处于<code>partial</code>或者<code>full</code>链表的<code>slab</code>进行处理。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">int</span> __cache_shrink(<span class="keyword">kmem_cache_t</span> *cachep)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slab</span> *<span class="title">slabp</span>;</span></span><br><span class="line">    <span class="keyword">int</span> ret;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 这个函数用于处理本地高速缓存和shared的高速缓存，下面给出了具体代码</span></span><br><span class="line">    drain_cpu_caches(cachep);</span><br><span class="line"></span><br><span class="line">    check_irq_on();</span><br><span class="line">    spin_lock_irq(&amp;cachep-&gt;spinlock);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span>(;;) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">p</span>;</span></span><br><span class="line"></span><br><span class="line">        p = cachep-&gt;lists.slabs_free.prev;</span><br><span class="line">        <span class="comment">// 如果已经没有free的slab了，那么就直接跳出</span></span><br><span class="line">        <span class="keyword">if</span> (p == &amp;cachep-&gt;lists.slabs_free)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        slabp = list_entry(cachep-&gt;lists.slabs_free.prev, struct slab, <span class="built_in">list</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DEBUG</span></span><br><span class="line">        <span class="keyword">if</span> (slabp-&gt;inuse)</span><br><span class="line">            BUG();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">        list_del(&amp;slabp-&gt;<span class="built_in">list</span>);</span><br><span class="line">        </span><br><span class="line">        cachep-&gt;lists.free_objects -= cachep-&gt;num;</span><br><span class="line">        spin_unlock_irq(&amp;cachep-&gt;spinlock);</span><br><span class="line">        <span class="comment">// 先将该slab从free list中断开，再销毁这个slab</span></span><br><span class="line">        slab_destroy(cachep, slabp);</span><br><span class="line">        spin_lock_irq(&amp;cachep-&gt;spinlock);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 这个函数是不管另外两条链表的，根据情况返回不同的值</span></span><br><span class="line">    ret = !list_empty(&amp;cachep-&gt;lists.slabs_full) ||</span><br><span class="line">        !list_empty(&amp;cachep-&gt;lists.slabs_partial);</span><br><span class="line">    spin_unlock_irq(&amp;cachep-&gt;spinlock);</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">drain_cpu_caches</span><span class="params">(<span class="keyword">kmem_cache_t</span> *cachep)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// do_drain释放所有的本地高速缓存</span></span><br><span class="line">    smp_call_function_all_cpus(do_drain, cachep);</span><br><span class="line">    check_irq_on();</span><br><span class="line">    spin_lock_irq(&amp;cachep-&gt;spinlock);</span><br><span class="line">    <span class="comment">// drain_array_locked处理shared本地高速缓存，根据情况它会进行不同的操作，具体请参考下面代码</span></span><br><span class="line">    <span class="keyword">if</span> (cachep-&gt;lists.shared)</span><br><span class="line">        drain_array_locked(cachep, cachep-&gt;lists.shared, <span class="number">1</span>);</span><br><span class="line">    spin_unlock_irq(&amp;cachep-&gt;spinlock);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">do_drain</span><span class="params">(<span class="keyword">void</span> *arg)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">kmem_cache_t</span> *cachep = (<span class="keyword">kmem_cache_t</span>*)arg;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">array_cache</span> *<span class="title">ac</span>;</span></span><br><span class="line"></span><br><span class="line">    check_irq_off();</span><br><span class="line">    ac = ac_data(cachep);</span><br><span class="line">    spin_lock(&amp;cachep-&gt;spinlock);</span><br><span class="line">    free_block(cachep, &amp;ac_entry(ac)[<span class="number">0</span>], ac-&gt;avail);</span><br><span class="line">    spin_unlock(&amp;cachep-&gt;spinlock);</span><br><span class="line">    ac-&gt;avail = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">drain_array_locked</span><span class="params">(<span class="keyword">kmem_cache_t</span> *cachep,</span></span></span><br><span class="line"><span class="function"><span class="params">                struct array_cache *ac, <span class="keyword">int</span> force)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> tofree;</span><br><span class="line"></span><br><span class="line">    check_spinlock_acquired(cachep);</span><br><span class="line">    <span class="keyword">if</span> (ac-&gt;touched &amp;&amp; !force) &#123;</span><br><span class="line">        ac-&gt;touched = <span class="number">0</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (ac-&gt;avail) &#123;</span><br><span class="line">        tofree = force ? ac-&gt;avail : (ac-&gt;limit+<span class="number">4</span>)/<span class="number">5</span>;</span><br><span class="line">        <span class="keyword">if</span> (tofree &gt; ac-&gt;avail) &#123;</span><br><span class="line">            tofree = (ac-&gt;avail+<span class="number">1</span>)/<span class="number">2</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        free_block(cachep, ac_entry(ac), tofree);</span><br><span class="line">        ac-&gt;avail -= tofree;</span><br><span class="line">        memmove(&amp;ac_entry(ac)[<span class="number">0</span>], &amp;ac_entry(ac)[tofree],</span><br><span class="line">                    <span class="keyword">sizeof</span>(<span class="keyword">void</span>*)*ac-&gt;avail);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="kmem-cache-destroy"><a href="#kmem-cache-destroy" class="headerlink" title="kmem_cache_destroy()"></a>kmem_cache_destroy()</h2><p>这个函数只能销毁全是空闲<code>slab</code>的高速缓存，如果该高速缓存中还有非空的<code>slab</code>，那么它不会完成销毁的工作。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * kmem_cache_destroy - delete a cache</span></span><br><span class="line"><span class="comment"> * @cachep: the cache to destroy</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Remove a kmem_cache_t object from the slab cache.</span></span><br><span class="line"><span class="comment"> * Returns 0 on success.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * It is expected this function will be called by a module when it is</span></span><br><span class="line"><span class="comment"> * unloaded.  This will remove the cache completely, and avoid a duplicate</span></span><br><span class="line"><span class="comment"> * cache being allocated each time a module is loaded and unloaded, if the</span></span><br><span class="line"><span class="comment"> * module doesn&#x27;t have persistent in-kernel storage across loads and unloads.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * The cache must be empty before calling this function.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * The caller must guarantee that noone will allocate memory from the cache</span></span><br><span class="line"><span class="comment"> * during the kmem_cache_destroy().</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">kmem_cache_destroy</span> <span class="params">(<span class="keyword">kmem_cache_t</span> * cachep)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!cachep || in_interrupt())</span><br><span class="line">        BUG();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Don&#x27;t let CPUs to come and go */</span></span><br><span class="line">    lock_cpu_hotplug();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Find the cache in the chain of caches. */</span></span><br><span class="line">    down(&amp;cache_chain_sem);</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * the chain is never empty, cache_cache is never destroyed</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    list_del(&amp;cachep-&gt;next);</span><br><span class="line">    up(&amp;cache_chain_sem);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 这里会销毁所有free的slab，但如果还有full或者partial的slab，那么就会报错</span></span><br><span class="line">    <span class="comment">// 在free_block这个函数中，我们可以通过不断地释放对象来改变slab所在的链表</span></span><br><span class="line">    <span class="keyword">if</span> (__cache_shrink(cachep)) &#123;</span><br><span class="line">        slab_error(cachep, <span class="string">&quot;Can&#x27;t free all objects&quot;</span>);</span><br><span class="line">        down(&amp;cache_chain_sem);</span><br><span class="line">        list_add(&amp;cachep-&gt;next,&amp;cache_chain);</span><br><span class="line">        up(&amp;cache_chain_sem);</span><br><span class="line">        unlock_cpu_hotplug();</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (unlikely(cachep-&gt;flags &amp; SLAB_DESTROY_BY_RCU))</span><br><span class="line">        synchronize_kernel();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* no cpu_online check required here since we clear the percpu</span></span><br><span class="line"><span class="comment">     * array on cpu offline and set this to NULL.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">// 下面这几步都是销毁对应的描述符，包括cache_array, shared_cache_array和cache本身</span></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; NR_CPUS; i++)</span><br><span class="line">        kfree(cachep-&gt;<span class="built_in">array</span>[i]);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* NUMA: free the list3 structures */</span></span><br><span class="line">    kfree(cachep-&gt;lists.shared);</span><br><span class="line">    cachep-&gt;lists.shared = <span class="literal">NULL</span>;</span><br><span class="line">    kmem_cache_free(&amp;cache_cache, cachep);</span><br><span class="line"></span><br><span class="line">    unlock_cpu_hotplug();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>至此，<code>slab</code>相关的关键函数基本都介绍完了。这里面的内容很多，需要好好思考总结。下一篇笔记我准备根据不同的情景，把这些函数串起来，也算是对<code>slab</code>的一种加深理解和总结吧。</p>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/" title="12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()">
+                    <div class="prevTitle">12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#kmalloc"><span class="toc-number">1.</span> <span class="toc-text">kmalloc()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#kfree"><span class="toc-number">2.</span> <span class="toc-text">kfree()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#cache-flusharray"><span class="toc-number">2.1.</span> <span class="toc-text">cache_flusharray()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#kmalloc-free"><span class="toc-number">3.</span> <span class="toc-text">kmalloc_free()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#slab-destroy"><span class="toc-number">4.</span> <span class="toc-text">slab_destroy()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#kmem-cache-shrink"><span class="toc-number">5.</span> <span class="toc-text">kmem_cache_shrink()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#cache-shrink"><span class="toc-number">5.1.</span> <span class="toc-text">__cache_shrink()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#kmem-cache-destroy"><span class="toc-number">6.</span> <span class="toc-text">kmem_cache_destroy()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">7.</span> <span class="toc-text">总结</span></a></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 21
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2023 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/16</span>
+            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - Slab以及对象的释放和销毁</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/27</span>
+            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/22</span>
+            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - Slab的基本操作 - kmem_cache_create()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/20</span>
+            <a class="archive-post-title" href="/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/18</span>
+            <a class="archive-post-title" href="/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/">09. 【slab】1 - slab简介以及相关结构体</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/03</span>
+            <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2020 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/03</span>
+            <a class="archive-post-title" href="/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/">Socket编程基础8 - 进程池和并发模型</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/26</span>
+            <a class="archive-post-title" href="/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/">Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/24</span>
+            <a class="archive-post-title" href="/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/">Linux编程基础4 - 进程间通信(共享内存)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/22</span>
+            <a class="archive-post-title" href="/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/">Linux编程基础3 - 进程间通信(信号量)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/21</span>
+            <a class="archive-post-title" href="/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/">Linux编程基础2 - 进程间通信(匿名管道)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span>
+            <a class="archive-post-title" href="/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/">Linux编程基础1 - I/O总结</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/13</span>
+            <a class="archive-post-title" href="/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/">Socket编程基础7 - 定时器</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/12</span>
+            <a class="archive-post-title" href="/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/">Socket编程基础6 - 高级IO函数</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/15</span>
+            <a class="archive-post-title" href="/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/">Socket编程基础5 - epoll实战</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/29</span>
+            <a class="archive-post-title" href="/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/">Socket编程基础4 - IO多路复用函数总结</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span>
+            <a class="archive-post-title" href="/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/">Socket编程基础3 - IO多路复用基础</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span>
+            <a class="archive-post-title" href="/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/">Socket编程基础2 - 基本回射服务实例</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span>
+            <a class="archive-post-title" href="/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/">Socket编程基础1 - 套接字和TCP/IP入门</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2017 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/09</span>
+            <a class="archive-post-title" href="/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/">一文搞懂C语言回调函数</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2016 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/31</span>
+            <a class="archive-post-title" href="/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/">C函数调用过程原理及函数栈帧分析(X86)</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="Linux内核">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内核
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux 2.6.11">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux 2.6.11
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="内存管理">
+                <span class="iconfont-archer">&#xe606;</span>
+                内存管理
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="C/C++">
+                <span class="iconfont-archer">&#xe606;</span>
+                C/C++
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="栈">
+                <span class="iconfont-archer">&#xe606;</span>
+                栈
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="X86汇编">
+                <span class="iconfont-archer">&#xe606;</span>
+                X86汇编
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux编程">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux编程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="文件I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                文件I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="标准I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                标准I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="多进程">
+                <span class="iconfont-archer">&#xe606;</span>
+                多进程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="IPC">
+                <span class="iconfont-archer">&#xe606;</span>
+                IPC
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="管道">
+                <span class="iconfont-archer">&#xe606;</span>
+                管道
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="信号量">
+                <span class="iconfont-archer">&#xe606;</span>
+                信号量
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="共享内存">
+                <span class="iconfont-archer">&#xe606;</span>
+                共享内存
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="UNP">
+                <span class="iconfont-archer">&#xe606;</span>
+                UNP
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="网络编程">
+                <span class="iconfont-archer">&#xe606;</span>
+                网络编程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="socket">
+                <span class="iconfont-archer">&#xe606;</span>
+                socket
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="回射服务">
+                <span class="iconfont-archer">&#xe606;</span>
+                回射服务
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="I/O模型">
+                <span class="iconfont-archer">&#xe606;</span>
+                I/O模型
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="select()">
+                <span class="iconfont-archer">&#xe606;</span>
+                select()
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="poll()">
+                <span class="iconfont-archer">&#xe606;</span>
+                poll()
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="epoll()">
+                <span class="iconfont-archer">&#xe606;</span>
+                epoll()
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ET/LT">
+                <span class="iconfont-archer">&#xe606;</span>
+                ET/LT
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="定时器">
+                <span class="iconfont-archer">&#xe606;</span>
+                定时器
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》">
+                <span class="iconfont-archer">&#xe606;</span>
+                《Linux高性能服务器编程》
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="进程池">
+                <span class="iconfont-archer">&#xe606;</span>
+                进程池
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="并发模型">
+                <span class="iconfont-archer">&#xe606;</span>
+                并发模型
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="技术广角">
+            <span class="iconfont-archer">&#xe60a;</span>
+            技术广角
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="个人随笔">
+            <span class="iconfont-archer">&#xe60a;</span>
+            个人随笔
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMetaRoot = "/"
+    if (siteMetaRoot === "undefined") {
+        siteMetaRoot = '/'
+    }
+    var siteMeta = {
+        url: "http://example.com",
+        root: siteMetaRoot,
+        author: "John Doe"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20211217"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20211217"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20211217" async></script>
+        
+        <!-- mermaid -->
+        
+    </body>
+</html>

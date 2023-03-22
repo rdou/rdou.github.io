@@ -428,6 +428,52 @@
             
         
         <article class="index-post">
+            <a class="abstract-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">
+                
+                <span class="abstract-title-text">13. 【Slab】5 - Slab以及对象的释放和销毁</span>
+            </a>
+            <div class="abstract-content">
+                到这，前面4篇slab笔记已经讨论了高速缓存、slab以及对象的分配。这篇笔记主要记录和释放、销毁相关的函数。在slab上花了太多时间和精力了，争取这是倒数第二篇，最后一篇准备综合的分析一些情况以及做总结。
+不多说，直接进入正题吧。这篇笔记我主要讨论下面几个函数：
+
+kmalloc()；
+kfree()；
+kmem_cache_free()；
+slab_destroy()；
+kmem_cac...
+            </div>
+            <!-- read more -->
+            
+            <div class="abstract-post-meta">
+                <!-- date -->
+                <div class="abstract-date" title="Last updated: 2023/03/21">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/03/16</span>
+                </div>
+                <!-- tags -->
+                
+                    <div class= abstract-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+</div>
+
+                
+            </div>
+        </article>
+        <div class="index-post-divider"></div>
+    
+        
+        
+        
+        
+            
+        
+        <article class="index-post">
             <a class="abstract-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">
                 
                 <span class="abstract-title-text">12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()</span>
@@ -804,7 +850,16 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
         
         
         
+        
+        
+        
+        
+        
     
+        
+        
+        
+        
         
         
         
@@ -933,7 +988,7 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 20
+        Total : 21
         </div>
         <!-- search  -->
         
@@ -947,6 +1002,12 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
             <div class="archive-year"> 2023 </div>
             <ul class="year-list">
             
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/16</span>
+            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - Slab以及对象的释放和销毁</a>
+        </li>
+    
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/27</span>
@@ -1135,21 +1196,6 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
                 Linux编程
             </span>
         
-            <span class="sidebar-tag-name" data-tags="多进程">
-                <span class="iconfont-archer">&#xe606;</span>
-                多进程
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="IPC">
-                <span class="iconfont-archer">&#xe606;</span>
-                IPC
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="共享内存">
-                <span class="iconfont-archer">&#xe606;</span>
-                共享内存
-            </span>
-        
             <span class="sidebar-tag-name" data-tags="文件I/O">
                 <span class="iconfont-archer">&#xe606;</span>
                 文件I/O
@@ -1160,6 +1206,16 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
                 标准I/O
             </span>
         
+            <span class="sidebar-tag-name" data-tags="多进程">
+                <span class="iconfont-archer">&#xe606;</span>
+                多进程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="IPC">
+                <span class="iconfont-archer">&#xe606;</span>
+                IPC
+            </span>
+        
             <span class="sidebar-tag-name" data-tags="管道">
                 <span class="iconfont-archer">&#xe606;</span>
                 管道
@@ -1168,6 +1224,11 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
             <span class="sidebar-tag-name" data-tags="信号量">
                 <span class="iconfont-archer">&#xe606;</span>
                 信号量
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="共享内存">
+                <span class="iconfont-archer">&#xe606;</span>
+                共享内存
             </span>
         
             <span class="sidebar-tag-name" data-tags="UNP">
