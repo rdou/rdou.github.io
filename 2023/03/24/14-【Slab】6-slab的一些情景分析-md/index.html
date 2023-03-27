@@ -19,18 +19,25 @@
         <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
     
     <meta name="description" content="">
-    <meta property="og:type" content="website">
-<meta property="og:title" content="Hexo">
-<meta property="og:url" content="http://example.com/archives/2023/index.html">
+    <meta name="description" content="这篇笔记算是对slab的总结吧，我会边写边回顾之前的几篇笔记。有新的想法就添加，有不对的地方就修改。争取把slab的一系列流程搞清楚。我还是先从第一个场景，就是从零开始创建普通高速缓存写起。 创建普通高速缓存创建第一个普通高速缓存这要从10. 【slab】2 - slab的基本操作 - kmem_cache_init()说起，在kmem_cache_init()中，内核创建的第一个高速缓存就是普通">
+<meta property="og:type" content="article">
+<meta property="og:title" content="14. 【Slab】6 - slab的一些情景分析">
+<meta property="og:url" content="http://example.com/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/index.html">
 <meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="这篇笔记算是对slab的总结吧，我会边写边回顾之前的几篇笔记。有新的想法就添加，有不对的地方就修改。争取把slab的一系列流程搞清楚。我还是先从第一个场景，就是从零开始创建普通高速缓存写起。 创建普通高速缓存创建第一个普通高速缓存这要从10. 【slab】2 - slab的基本操作 - kmem_cache_init()说起，在kmem_cache_init()中，内核创建的第一个高速缓存就是普通">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-03-24T07:36:17.000Z">
+<meta property="article:modified_time" content="2023-03-27T21:42:33.236Z">
 <meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Linux 2.6.11">
+<meta property="article:tag" content="内存管理">
 <meta name="twitter:card" content="summary">
     <meta http-equiv="Cache-control" content="no-cache">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <link rel="icon" href="/assets/touxiang.png">
     
-    <title>从零到负一</title>
+    <title>14. 【Slab】6 - slab的一些情景分析 · 从零到负一</title>
     <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
 /* This file is meant as a standalone workflow for
 - testing support for link[rel=preload]
@@ -217,6 +224,8 @@
         }
     </script>
     
+        <body class="post-body">
+    
         <!-- header -->
         <header class="header header-mobile">
     <!-- top read progress line -->
@@ -246,6 +255,17 @@
     </div>
     <!-- toggle banner for post layout -->
     
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">从零到负一</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">14. 【Slab】6 - slab的一些情景分析</a>
+            </div>
+        </div>
+    
 </header>
 
         <!-- fixed footer -->
@@ -272,24 +292,80 @@
 
 
 
+    height:50vh;
+
 ">
     
     <!-- 主页  -->
     
+        
+    <!-- 404页  -->
+    
     <div class="site-intro-placeholder"></div>
-    <div class="site-intro-img" style="background-image: url(/)"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
     <div class="site-intro-meta">
         <!-- 标题  -->
         <h1 class="intro-title">
             <!-- 主页  -->
+            
+                14. 【Slab】6 - slab的一些情景分析
+            <!-- 404 -->
             
         </h1>
         <!-- 副标题 -->
         <p class="intro-subtitle">
             <!-- 主页副标题  -->
             
+                
+            <!-- 404 -->
+            
         </p>
         <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+</div>
+
+                
+                <!-- 文章字数统计 -->
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2023/03/24</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
         
     </div>
 </div>
@@ -419,290 +495,139 @@
 
             <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
             <div class="container container-unloaded">
-                <main class="main index-page">
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/">
-                
-                <span class="abstract-title-text">14. 【Slab】6 - slab的一些情景分析</span>
-            </a>
-            <div class="abstract-content">
-                这篇笔记算是对slab的总结吧，我会边写边回顾之前的几篇笔记。有新的想法就添加，有不对的地方就修改。争取把slab的一系列流程搞清楚。我还是先从第一个场景，就是从零开始创建普通高速缓存写起。
-创建普通高速缓存创建第一个普通高速缓存这要从10. 【slab】2 - slab的基本操作 - kmem_cache_init()说起，在kmem_cache_init()中，内核创建的第一个高速缓存就...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/27">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/03/24</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-</div>
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>这篇笔记算是对<code>slab</code>的总结吧，我会边写边回顾之前的几篇笔记。有新的想法就添加，有不对的地方就修改。争取把<code>slab</code>的一系列流程搞清楚。我还是先从第一个场景，就是从零开始创建普通高速缓存写起。</p>
+<h2 id="创建普通高速缓存"><a href="#创建普通高速缓存" class="headerlink" title="创建普通高速缓存"></a>创建普通高速缓存</h2><h3 id="创建第一个普通高速缓存"><a href="#创建第一个普通高速缓存" class="headerlink" title="创建第一个普通高速缓存"></a>创建第一个普通高速缓存</h3><p>这要从<a target="_blank" rel="noopener" href="https://rdou.github.io/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</a>说起，在<code>kmem_cache_init()</code>中，内核创建的第一个高速缓存就是普通高速缓存，我这里暂且给它取个名字 - GC1</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">sizes-&gt;cs_cachep = kmem_cache_create(</span><br><span class="line">                           names-&gt;name,                       <span class="comment">// onst char *name</span></span><br><span class="line">                           sizes-&gt;cs_size,                    <span class="comment">// size_t size, the size of objects to be created in this cache</span></span><br><span class="line">                           ARCH_KMALLOC_MINALIGN,             <span class="comment">// size_t align:</span></span><br><span class="line">                           (ARCH_KMALLOC_FLAGS | SLAB_PANIC), <span class="comment">// unsigned long flags</span></span><br><span class="line">                           <span class="literal">NULL</span>,                              <span class="comment">// void (*ctor)(void*, kmem_cache_t *, unsigned long)</span></span><br><span class="line">                           <span class="literal">NULL</span>);                   </span><br></pre></td></tr></table></figure>
+<p>我们来看看，这个时候有什么，这个时候我们只有一个静态初始化的高速缓存<code>cache_cache</code>，它的本地高速缓存也是静态初始化的，shared的高速缓存是空的，没有一个分配好的<code>slab</code>，当然也就没有任何对象。这种情况很特殊，因此我把它放在第一个位置。我们来看看在这种情况下如何创建高速缓存。</p>
+<p>这里我稍微详细点记录第一个高速缓存是如何创建的。</p>
+<ol>
+<li>计算GC1中的对齐（用于对象地址、offset等地方）以及将对象的大小按<code>WORD</code>进行对齐。</li>
+</ol>
+<blockquote>
+<p>GC1高速缓存的对象大小、对齐已经确定  </p>
+</blockquote>
+<ol start="2">
+<li>获取GC1高速缓存的描述符。<ol>
+<li><code>kmem_cache_create()</code>通过调用<code>kmem_cache_alloc() --&gt; __cache_alloc()</code>从<code>cache_cache</code>获取GC1缓存的描述符（<code>cache_cache</code>就是专门用于这项工作）；</li>
+<li><code>__cache_alloc()</code>检查其本地高速缓存是否有空闲空间 - 目前<code>ac-&gt;avail == 0</code>，不满足条件。开始尝试对<code>cache_cache</code>的本地高速缓存进行填充；</li>
+<li>查看shared的本地高速缓存是否有空闲对象 - 目前shared的本地高速缓存还为空；</li>
+<li>查看是否有<code>slab</code>在free或者partial的<code>slab</code>链表上 - 目前还没有任何<code>slab</code>；</li>
+<li>需要调用<code>cache_grow()</code>来创建一个新的<code>slab</code>（包括对对象的初始化）- 这个<code>slab</code>是<code>cache_cache</code>的，因此使用<code>cache_cache</code>初始化的设置来创建这个<code>slab</code>（比如对象大小，偏移，着色，<code>slab</code>描述符是否在<code>slab</code>外等）；</li>
+<li>将新创建的<code>slab</code>放回<code>slab</code>的free链表，然后跳到2.4，通过free链表找到这个刚创建的<code>slab</code>；</li>
+<li>将一定数量（<code>&lt; batchcount</code>)的对象给本地高速缓存（其实就是将对象的地址复制给本地高速缓存），在这里，<code>cache_cache</code>的<code>batchcount</code>和本地高速缓存的大小都是1，因此，只需要复制1个对象的地址即可；</li>
+<li>在<code>__cache_alloc()</code>中返回这个对象的地址，这个地址就是我们需要创建的GC1高速缓存的描述符地址。</li>
+</ol>
+</li>
+</ol>
+<blockquote>
+<p>GC1高速缓存的描述符已获取，<code>cache_cache</code>有了第一个<code>slab</code>，其<code>array_cache</code>的本地高速缓存实现了填充和使用</p>
+</blockquote>
+<ol start="3">
+<li>根据对象的大小、对齐等，计算出GC1中<code>slab</code>对象的数量、高速缓存的<code>gfporder</code>、offset、着色、对象大小等等。</li>
+</ol>
+<blockquote>
+<p>GC1高速缓存的<code>gfporder</code>、offset、着色、对象大小等等已经获取，其<code>slab</code>的内部结构已经确定</p>
+</blockquote>
+<ol start="4">
+<li>创建GC1高速缓存的本地高速缓存<ol>
+<li>根据<code>g_cpucache_up</code>的值（NONE），使用静态分配的方法给GC1分配本地高速缓存，完成后<code>g_cpucache_up == PARTIAL</code>；</li>
+<li>初始化GC1的本地高速缓存以及部分GC1的参数。</li>
+</ol>
+</li>
+</ol>
+<blockquote>
+<p>GC1有了本地高速缓存，但没有空闲对象，GC1目前也没有<code>slab</code>。</p>
+</blockquote>
+<ol start="5">
+<li>将GC1连入<code>cache_chain</code>。</li>
+</ol>
+<p>至此，GC1就算是创建成功了，但它目前还有几个缺点：</p>
+<ol>
+<li>没有<code>slab</code>和对象；</li>
+<li>没有shared的高速缓存；</li>
+<li>本地高速缓存还是空的；</li>
+</ol>
+<p>这些缺点在之后的初始化过程中都会被修复，我到时候再说明。</p>
+<h3 id="创建第二个普通高速缓存"><a href="#创建第二个普通高速缓存" class="headerlink" title="创建第二个普通高速缓存"></a>创建第二个普通高速缓存</h3><p>这里我就给它取名为GC2吧，我们来看看它的创建和第一个普通高速缓存的创建有什么不同。</p>
+<ol>
+<li>这步一样。</li>
+<li>这步基本一样，<code>cache_cache</code>的本地高速缓存依然没有空闲对象，去partial <code>slab</code>链表找到<code>slab</code>和对象，复制给<code>cache_cache</code>的本地高速缓存并被使用。</li>
+<li>这步一样。</li>
+<li>现在<code>g_cpucache_up == PARTIAL</code>，那么就需要使用<code>kmallo()</code>来获取GC2的本地高速缓存了。和<code>cache_cache</code>一样，GC2的本地高速缓存也只能容纳一个对象。这个函数最终会调用<code>__cache_alloc()</code>，那么就要走GC1创建过程中<code>cache_cache</code>走的老路了。GC1创建一个新的<code>slab</code>再获得GC2的高速缓存描述符。其它和GC1的创建一样。</li>
+</ol>
+<blockquote>
+<p>GC1有了第一个<code>slab</code>，其<code>array_cache</code>的本地高速缓存实现了填充和使用</p>
+</blockquote>
+<ol start="5">
+<li>将GC2连入<code>cache_chain</code>。</li>
+</ol>
+<h3 id="创建第三个普通高速缓存"><a href="#创建第三个普通高速缓存" class="headerlink" title="创建第三个普通高速缓存"></a>创建第三个普通高速缓存</h3><p>1,2,3,5步都一样，4中，<code>kmalloc()</code>去GC1的<code>slab</code>中获取一个对象，不用再创建新的<code>slab</code>。其它一样。</p>
+<h3 id="完成kmem-cache-init-剩下部分"><a href="#完成kmem-cache-init-剩下部分" class="headerlink" title="完成kmem_cache_init()剩下部分"></a>完成kmem_cache_init()剩下部分</h3><p>在上一部分，我们讨论的是创建普通高速缓存，它们是在<code>kmem_cache_init()</code>中完成的。到目前为止，我们可以知道，<code>cache_cache</code>和GC1是真正分配了<code>slab</code>，其它普通高速缓存都没有分配<code>slab</code>。并且它们的本地高速缓存和只能容纳一个对象、shared高速缓存还没有初始化，这部分都在<code>kmem_cache_init()</code>的后半部分完成。</p>
+<p>在完成所有普通高速缓存的创建后，第一步就是替换掉<code>cache_cache</code>和GC1中的本地高速缓存。从上面分析可以知道，这两个高速缓存的本地高速缓存都是静态分配的，我们这里要用<code>kmalloc()</code>来动态的分配内存空间（从GC1中获取）。</p>
+<p>再次总结，高速缓存的描述符从<code>cache_cache</code>中获取（包括专用和普通），<code>cache_cache</code>和普通高速缓存的本地高速缓存从GC1获取。</p>
+<p>到这里，我们就需要重新初始化<code>cache_cache</code>和所有普通高速缓存的本地高速缓存和shared的高速缓存了。</p>
+<h3 id="重新初始化本地高速缓存和shared的高速缓存"><a href="#重新初始化本地高速缓存和shared的高速缓存" class="headerlink" title="重新初始化本地高速缓存和shared的高速缓存"></a>重新初始化本地高速缓存和shared的高速缓存</h3><p>这部分直接参考<a target="_blank" rel="noopener" href="https://rdou.github.io/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/#/%E5%88%9D%E5%A7%8B%E5%8C%96CPU%E6%9C%AC%E5%9C%B0%E7%BC%93%E5%AD%98">11. 【Slab】3 - Slab的基本操作 - kmem_cache_create()</a>即可，说的很清楚了（当然，我现在又回去修改了一些地方）。</p>
+<p>这步结束后，<code>cache_cache</code>, GC1, GC2, …, GCx就都完成了最后的分配，以后就可以直接使用<code>kmalloc()</code>等函数了。</p>
+<h2 id="kmem-cache-init-结束之后创建专用高速缓存"><a href="#kmem-cache-init-结束之后创建专用高速缓存" class="headerlink" title="kmem_cache_init()结束之后创建专用高速缓存"></a>kmem_cache_init()结束之后创建专用高速缓存</h2><p>在初始化之后，创建专用高速缓存就比较简单了。</p>
+<ol>
+<li>这步一样。</li>
+<li>这步一样，从<code>cache_cache</code>获取高速缓存描述符。</li>
+<li>这步一样。</li>
+<li>现在<code>g_cpucache_up == FULL</code>，说明<code>slab</code>系统初始化已经完成。可以直接在这里创建本地高速缓存和shared的高速缓存。</li>
+<li>这步一样。</li>
+</ol>
+<p>到这里，我们就完成了对高速缓存创建的几种特殊情况的分析，同时，我们还复习了如何分配对象以及在不同的情况下，对象分配过程中的不同点。对于对象、<code>slab</code>以及高速缓存的释放、销毁，我在上一篇笔记中已经详细记载了，这里就不重复了。</p>
+<p>至此，<code>slab</code>系统的学习总结要告一段落了，以后有什么新的想法再来补充、修改。</p>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
+    </article>
+    <!-- license -->
     
-        
-        
-        
-        
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
             
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">
-                
-                <span class="abstract-title-text">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</span>
-            </a>
-            <div class="abstract-content">
-                到这，前面4篇slab笔记已经讨论了高速缓存、slab以及对象的分配。这篇笔记主要记录和释放、销毁相关的函数。在slab上花了太多时间和精力了，争取这是倒数第二篇，最后一篇准备综合的分析一些情况以及做总结。
-不多说，直接进入正题吧。这篇笔记我主要讨论下面几个函数：
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/" title="13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁">
+                    <div class="prevTitle">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
 
-kmalloc()；
-kfree()；
-kmem_cache_free()；
-slab_destroy()；
-kmem_cac...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/24">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/03/16</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-</div>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
             
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">
-                
-                <span class="abstract-title-text">12. 【Slab】4 - slab的基本操作 - kmem_cache_alloc()</span>
-            </a>
-            <div class="abstract-content">
-                在上一篇笔记 11. 【Slab】3 - Slab的基本操作 - kmem_cache_create() 中，我们完成了对高速缓存的分配。在在那篇笔记中，我们提到了kmem_cache_alloc()函数，这个函数用于获取对象，是一个很重要的函数。在这篇笔记中，我将仔细分析这个函数。有了这个函数，我们就可以获取对象了，并且这里和伙伴系统又联系在了一起。通过学习这个函数，我们可以知道slab是...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/24">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/27</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-</div>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
             
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">
-                
-                <span class="abstract-title-text">11. 【Slab】3 - slab的基本操作 - kmem_cache_create()</span>
-            </a>
-            <div class="abstract-content">
-                在上一篇笔记10. 【slab】2 - slab的基本操作 - kmem_cache_init()中，当遇到kmem_cache_create()时，我说之后会写笔记进行总结。这篇笔记就是对这个函数的详细总结。内容比较多、比较杂，我自己也写的乱，需要好好理解思考，静下来看。
-kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(kmem_cache_init())，...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/27">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/22</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-</div>
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
             
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">
-                
-                <span class="abstract-title-text">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</span>
-            </a>
-            <div class="abstract-content">
-                在上一篇笔记09. 【slab】1 - slab简介以及相关结构体中，我已经介绍了slab的基本原理以及其使用的数据结构。在这篇笔记中，我将开始第一个函数 - kmem_cache_init()的分析。 
-这个函数在start_kernel()中被调用，用于初始化slab。在这之前，伙伴系统已经初始化完成。kmem_cache_init()这个函数主要分4步：
 
-初始化cache_cache...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/24">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/20</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-</div>
+            <!-- utteranc评论 -->
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/">
-                
-                <span class="abstract-title-text">09. 【slab】1 - slab简介以及相关结构体</span>
-            </a>
-            <div class="abstract-content">
-                最近开始学习slab，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的slab知识。
-为什么需要slab关于这点，书上和网上都说了很多，我这里简单地说3点：
 
-可以分配比PAGE_SIZE更小的内存空间，大大地降低了内部碎片；
-效率更高。第一，slab的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，slab可以更快地分配和释放经常使用的对象（释放后并不...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/24">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/18</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-</div>
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
 
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">
-                
-                <span class="abstract-title-text">重新出发</span>
-            </a>
-            <div class="abstract-content">
-                
-种一棵树最好的时间是十年前，其次是现在
 
-上一篇在Github Page上的博文要追溯到2020年了。那时还没有入职高通、也没有投身股市，一切似乎都在向好的方向前进。可惜现在回头看过去，这两年多经历了太多，没有得到却失去了很多东西。从今年开始，我准备重新回归自己的一亩三分地，再次出发。
-今年经济大环境依然不好，各个公司都在裁员，这正是一个适合播种的季节。静下心来，脚踏实地，不断深耕和开拓自...
-            </div>
-            <!-- read more -->
             
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/02/25">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/01/03</span>
-                </div>
-                <!-- tags -->
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
+            
+
+            
+
+        </div>
     
-    <!-- paginator  -->
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
     
 </main>
 
@@ -778,6 +703,23 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
 
         </div>
         <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E6%99%AE%E9%80%9A%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98"><span class="toc-number">1.</span> <span class="toc-text">创建普通高速缓存</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%99%AE%E9%80%9A%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98"><span class="toc-number">1.1.</span> <span class="toc-text">创建第一个普通高速缓存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%AC%AC%E4%BA%8C%E4%B8%AA%E6%99%AE%E9%80%9A%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98"><span class="toc-number">1.2.</span> <span class="toc-text">创建第二个普通高速缓存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%AC%AC%E4%B8%89%E4%B8%AA%E6%99%AE%E9%80%9A%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98"><span class="toc-number">1.3.</span> <span class="toc-text">创建第三个普通高速缓存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%88%90kmem-cache-init-%E5%89%A9%E4%B8%8B%E9%83%A8%E5%88%86"><span class="toc-number">1.4.</span> <span class="toc-text">完成kmem_cache_init()剩下部分</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%87%8D%E6%96%B0%E5%88%9D%E5%A7%8B%E5%8C%96%E6%9C%AC%E5%9C%B0%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98%E5%92%8Cshared%E7%9A%84%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98"><span class="toc-number">1.5.</span> <span class="toc-text">重新初始化本地高速缓存和shared的高速缓存</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#kmem-cache-init-%E7%BB%93%E6%9D%9F%E4%B9%8B%E5%90%8E%E5%88%9B%E5%BB%BA%E4%B8%93%E7%94%A8%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98"><span class="toc-number">2.</span> <span class="toc-text">kmem_cache_init()结束之后创建专用高速缓存</span></a></li></ol>
+            </div>
         
         <!-- sidebar -->
         <div class="sidebar sidebar-hide">
@@ -1422,6 +1364,8 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
         <!-- CNZZ -->
         
         <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20211217" async></script>
         
         <!-- mermaid -->
         

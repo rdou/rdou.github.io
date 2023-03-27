@@ -444,6 +444,50 @@
             
         
         <article class="index-post">
+            <a class="abstract-title" href="/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/">
+                
+                <span class="abstract-title-text">Linux编程基础3 - 进程间通信(信号量)</span>
+            </a>
+            <div class="abstract-content">
+                <p>这篇文章既不介绍什么是信号量，也不解释为什么要用信号量，这些都是可以网上随便搜得到的，这篇文章主要讲解如何使用Linux下的信号量。Linux下的信号量是用系统调用直接实现的，它既可以用作<code>binary semaphore</code>也可以用作<code>counting semaphore</code>。为方便起见，这里我用<code>binary semaphore</code>作为例子进行讲解。Linux的信号量使用了3个系统调用 - <code>semget()</code>, <code>semctl()</code>和<code>semop()</code>。因为是系统调用而不是封装好的API，因此使用起来还是要麻烦些，我们下面就来看看如何使用这些系统调用。</p>
+            </div>
+            <!-- read more -->
+            
+            <div class="abstract-post-meta">
+                <!-- date -->
+                <div class="abstract-date" title="Last updated: 2020/06/25">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2020/06/22</span>
+                </div>
+                <!-- tags -->
+                
+                    <div class= abstract-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="C/C++">C/C++</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux编程">Linux编程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="多进程">多进程</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="IPC">IPC</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="信号量">信号量</a>
+    
+</div>
+
+                
+            </div>
+        </article>
+        <div class="index-post-divider"></div>
+    
+        
+        
+        
+        
+            
+            
+        
+        <article class="index-post">
             <a class="abstract-title" href="/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/">
                 
                 <span class="abstract-title-text">Linux编程基础2 - 进程间通信(匿名管道)</span>
@@ -854,45 +898,6 @@
         </article>
         <div class="index-post-divider"></div>
     
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/">
-                
-                <span class="abstract-title-text">一文搞懂C语言回调函数</span>
-            </a>
-            <div class="abstract-content">
-                什么是回调函数我们先来看看百度百科是如何定义回调函数的：
-
-回调函数就是一个通过函数指针调用的函数。如果你把函数的指针（地址）作为参数传递给另一个函数，当这个指针被用来调用其所指向的函数时，我们就说这是回调函数。回调函数不是由该函数的实现方直接调用，而是在特定的事件或条件发生时由另外的一方调用的，用于对该事件或条件进行响应。
-
-假设我们要使用一个排序函数来对数组进行排序，那么在主程序(Mai...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2021/01/13">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2017/02/09</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="C/C++">C/C++</a>
-    
-</div>
-
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
     <!-- paginator  -->
     
         <nav class="page-nav">
@@ -1156,7 +1161,26 @@
         
         
         
+        
+        
+        
+        
+        
     
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
@@ -1289,7 +1313,7 @@
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 21
+        Total : 22
         </div>
         <!-- search  -->
         
@@ -1305,20 +1329,26 @@
             
         
         <li class="archive-post-item">
+            <span class="archive-post-date">03/24</span>
+            <a class="archive-post-title" href="/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/">14. 【Slab】6 - slab的一些情景分析</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
             <span class="archive-post-date">03/16</span>
-            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - Slab以及对象的释放和销毁</a>
+            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/27</span>
-            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()</a>
+            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - slab的基本操作 - kmem_cache_alloc()</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/22</span>
-            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - Slab的基本操作 - kmem_cache_create()</a>
+            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - slab的基本操作 - kmem_cache_create()</a>
         </li>
     
         

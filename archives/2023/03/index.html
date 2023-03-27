@@ -428,9 +428,49 @@
             
         
         <article class="index-post">
+            <a class="abstract-title" href="/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/">
+                
+                <span class="abstract-title-text">14. 【Slab】6 - slab的一些情景分析</span>
+            </a>
+            <div class="abstract-content">
+                这篇笔记算是对slab的总结吧，我会边写边回顾之前的几篇笔记。有新的想法就添加，有不对的地方就修改。争取把slab的一系列流程搞清楚。我还是先从第一个场景，就是从零开始创建普通高速缓存写起。
+创建普通高速缓存创建第一个普通高速缓存这要从10. 【slab】2 - slab的基本操作 - kmem_cache_init()说起，在kmem_cache_init()中，内核创建的第一个高速缓存就...
+            </div>
+            <!-- read more -->
+            
+            <div class="abstract-post-meta">
+                <!-- date -->
+                <div class="abstract-date" title="Last updated: 2023/03/27">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/03/24</span>
+                </div>
+                <!-- tags -->
+                
+                    <div class= abstract-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+</div>
+
+                
+            </div>
+        </article>
+        <div class="index-post-divider"></div>
+    
+        
+        
+        
+        
+            
+        
+        <article class="index-post">
             <a class="abstract-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">
                 
-                <span class="abstract-title-text">13. 【Slab】5 - Slab以及对象的释放和销毁</span>
+                <span class="abstract-title-text">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</span>
             </a>
             <div class="abstract-content">
                 到这，前面4篇slab笔记已经讨论了高速缓存、slab以及对象的分配。这篇笔记主要记录和释放、销毁相关的函数。在slab上花了太多时间和精力了，争取这是倒数第二篇，最后一篇准备综合的分析一些情况以及做总结。
@@ -446,7 +486,7 @@ kmem_cac...
             
             <div class="abstract-post-meta">
                 <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/21">
+                <div class="abstract-date" title="Last updated: 2023/03/24">
                     <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/03/16</span>
                 </div>
                 <!-- tags -->
@@ -660,7 +700,26 @@ kmem_cac...
         
         
         
+        
+        
+        
+        
+        
     
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
@@ -793,7 +852,7 @@ kmem_cac...
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 21
+        Total : 22
         </div>
         <!-- search  -->
         
@@ -809,20 +868,26 @@ kmem_cac...
             
         
         <li class="archive-post-item">
+            <span class="archive-post-date">03/24</span>
+            <a class="archive-post-title" href="/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/">14. 【Slab】6 - slab的一些情景分析</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
             <span class="archive-post-date">03/16</span>
-            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - Slab以及对象的释放和销毁</a>
+            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/27</span>
-            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - Slab的基本操作 - kmem_cache_alloc()</a>
+            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - slab的基本操作 - kmem_cache_alloc()</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/22</span>
-            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - Slab的基本操作 - kmem_cache_create()</a>
+            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - slab的基本操作 - kmem_cache_create()</a>
         </li>
     
         
