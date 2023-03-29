@@ -27,7 +27,7 @@
 <meta property="og:description" content="在上一篇笔记10. 【slab】2 - slab的基本操作 - kmem_cache_init()中，当遇到kmem_cache_create()时，我说之后会写笔记进行总结。这篇笔记就是对这个函数的详细总结。内容比较多、比较杂，我自己也写的乱，需要好好理解思考，静下来看。 kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(kmem_cache_init())，它还用">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-02-22T09:36:09.000Z">
-<meta property="article:modified_time" content="2023-03-27T18:08:56.637Z">
+<meta property="article:modified_time" content="2023-03-28T15:22:35.599Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Linux内核">
 <meta property="article:tag" content="Linux 2.6.11">
@@ -789,8 +789,6 @@
         
         
     
-        
-        
         
         
         
