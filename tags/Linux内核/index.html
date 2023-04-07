@@ -450,9 +450,9 @@
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
         <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
     
 </div>
 
@@ -496,9 +496,9 @@ kmem_cac...
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
         <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
     
 </div>
 
@@ -535,9 +535,9 @@ kmem_cac...
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
         <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
     
 </div>
 
@@ -575,9 +575,9 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
         <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
     
 </div>
 
@@ -617,9 +617,9 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
         <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
     
 </div>
 
@@ -660,7 +660,96 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
+        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
+    
+</div>
+
+                
+            </div>
+        </article>
+        <div class="index-post-divider"></div>
+    
+        
+        
+        
+        
+            
+        
+        <article class="index-post">
+            <a class="abstract-title" href="/2022/04/03/02-ARMv8-MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">
+                
+                <span class="abstract-title-text">02. ARMv8 MMU的初始化</span>
+            </a>
+            <div class="abstract-content">
+                在上一篇笔记【TODO】中，我已经总结了ARMv8中MMU的基础知识。这篇笔记主要总结在Linux启动阶段，MMU是如何开启，以及临时页表是如何建立起来的。由于ARMv8有多种Exception Level, Security Level以及Execute Level等，为了方便起见，我这里就分析一种：EL1, NS, AARCH64, 4K页面。
+本文所用的部分宏为了便于写这篇笔记，很有必...
+            </div>
+            <!-- read more -->
+            
+            <div class="abstract-post-meta">
+                <!-- date -->
+                <div class="abstract-date" title="Last updated: 2023/04/07">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/04/03</span>
+                </div>
+                <!-- tags -->
+                
+                    <div class= abstract-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 4.14.311">Linux 4.14.311</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+</div>
+
+                
+            </div>
+        </article>
+        <div class="index-post-divider"></div>
+    
+        
+        
+        
+        
+            
+        
+        <article class="index-post">
+            <a class="abstract-title" href="/2022/04/01/01-ARMv8-MMU%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">
+                
+                <span class="abstract-title-text">01. ARMv8 MMU的基础知识</span>
+            </a>
+            <div class="abstract-content">
+                这篇笔记主要记录ARMv8 MMU的学习，学习资料主要是下面两个文档：
+
+Armv8-A Address Translation
+ARM Cortex-A Series Programmer&#39;s Guide for ARMv8-A
+
+第1个其实是将2中不同章节和地址转换相关的内容放在一起，因此免去了查找不同章节内容的痛苦。相比于2，我会更多地使用1中内容。
+ARMv8有多个Excep...
+            </div>
+            <!-- read more -->
+            
+            <div class="abstract-post-meta">
+                <!-- date -->
+                <div class="abstract-date" title="Last updated: 2023/04/07">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/04/01</span>
+                </div>
+                <!-- tags -->
+                
+                    <div class= abstract-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 4.14.311">Linux 4.14.311</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
     
         <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
     
@@ -869,7 +958,37 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
         
         
         
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
@@ -1014,7 +1133,7 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 22
+        Total : 24
         </div>
         <!-- search  -->
         
@@ -1068,6 +1187,27 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
         <li class="archive-post-item">
             <span class="archive-post-date">01/03</span>
             <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/03</span>
+            <a class="archive-post-title" href="/2022/04/03/02-ARMv8-MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">02. ARMv8 MMU的初始化</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/01</span>
+            <a class="archive-post-title" href="/2022/04/01/01-ARMv8-MMU%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">01. ARMv8 MMU的基础知识</a>
         </li>
     
         
@@ -1198,9 +1338,14 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
                 Linux内核
             </span>
         
-            <span class="sidebar-tag-name" data-tags="Linux 2.6.11">
+            <span class="sidebar-tag-name" data-tags="Linux 4.14.311">
                 <span class="iconfont-archer">&#xe606;</span>
-                Linux 2.6.11
+                Linux 4.14.311
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ARMv8_64">
+                <span class="iconfont-archer">&#xe606;</span>
+                ARMv8_64
             </span>
         
             <span class="sidebar-tag-name" data-tags="内存管理">
@@ -1208,19 +1353,14 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
                 内存管理
             </span>
         
+            <span class="sidebar-tag-name" data-tags="Linux 2.6.11">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux 2.6.11
+            </span>
+        
             <span class="sidebar-tag-name" data-tags="C/C++">
                 <span class="iconfont-archer">&#xe606;</span>
                 C/C++
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="栈">
-                <span class="iconfont-archer">&#xe606;</span>
-                栈
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="X86汇编">
-                <span class="iconfont-archer">&#xe606;</span>
-                X86汇编
             </span>
         
             <span class="sidebar-tag-name" data-tags="Linux编程">
@@ -1236,6 +1376,16 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
             <span class="sidebar-tag-name" data-tags="标准I/O">
                 <span class="iconfont-archer">&#xe606;</span>
                 标准I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="栈">
+                <span class="iconfont-archer">&#xe606;</span>
+                栈
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="X86汇编">
+                <span class="iconfont-archer">&#xe606;</span>
+                X86汇编
             </span>
         
             <span class="sidebar-tag-name" data-tags="多进程">

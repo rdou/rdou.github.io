@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="这篇笔记主要记录ARMv8 MMU的学习，学习资料主要是下面两个文档：  Armv8-A Address Translation ARM Cortex-A Series Programmer&#39;s Guide for ARMv8-A  第1个其实是将2中不同章节和地址转换相关的内容放在一起，因此免去了查找不同章节内容的痛苦。相比于2，我会更多地使用1中内容。 ARMv8有多个Exceptio">
+<meta property="og:type" content="article">
+<meta property="og:title" content="01. ARMv8 MMU的基础知识">
+<meta property="og:url" content="http://example.com/2022/04/01/01-ARMv8-MMU%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="这篇笔记主要记录ARMv8 MMU的学习，学习资料主要是下面两个文档：  Armv8-A Address Translation ARM Cortex-A Series Programmer&#39;s Guide for ARMv8-A  第1个其实是将2中不同章节和地址转换相关的内容放在一起，因此免去了查找不同章节内容的痛苦。相比于2，我会更多地使用1中内容。 ARMv8有多个Exceptio">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.imgur.com/f49He40l.jpg">
+<meta property="og:image" content="https://i.imgur.com/PwxzSdO.jpg">
+<meta property="og:image" content="https://i.imgur.com/EjyPOGj.jpg">
+<meta property="og:image" content="https://i.imgur.com/AifBq46.png">
+<meta property="og:image" content="https://i.imgur.com/eJGdWNC.png">
+<meta property="og:image" content="https://i.imgur.com/7NCyL42.png">
+<meta property="og:image" content="https://i.imgur.com/zNdm0rR.png">
+<meta property="article:published_time" content="2022-04-01T17:36:04.000Z">
+<meta property="article:modified_time" content="2023-04-07T17:27:56.627Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Linux 4.14.311">
+<meta property="article:tag" content="ARMv8_64">
+<meta property="article:tag" content="内存管理">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/f49He40l.jpg">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/touxiang.png">
+    
+    <title>01. ARMv8 MMU的基础知识 · 从零到负一</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20211217" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20211217" as="style">
+    <link rel="stylesheet" href="/css/dark.css">
+    <link rel="stylesheet" href="/css/mobile.css?v=20211217" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20211217" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20211217" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header header-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>从零到负一</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">从零到负一</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">01. ARMv8 MMU的基础知识</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:50vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+    
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                01. ARMv8 MMU的基础知识
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 4.14.311">Linux 4.14.311</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+    
+</div>
+
+                
+                <!-- 文章字数统计 -->
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2022/04/01</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>这篇笔记主要记录ARMv8 MMU的学习，学习资料主要是下面两个文档：</p>
+<ol>
+<li><code>Armv8-A Address Translation</code></li>
+<li><code>ARM Cortex-A Series Programmer&#39;s Guide for ARMv8-A</code></li>
+</ol>
+<p>第1个其实是将2中不同章节和地址转换相关的内容放在一起，因此免去了查找不同章节内容的痛苦。相比于2，我会更多地使用1中内容。</p>
+<p>ARMv8有多个Exception/Excution/Security Level，这篇笔记主要关注NS + EL1 + AArch64的组合。</p>
+<h2 id="MMU的基本功能"><a href="#MMU的基本功能" class="headerlink" title="MMU的基本功能"></a>MMU的基本功能</h2><p>MMU地功能就是实现<code>VA-&gt;PA</code>地转换，我们会创建一系列的映射表来实现这个功能。至于为什么要用虚拟地址我就不解释了，网上随便搜搜就能找到一大堆的资料。</p>
+<p>下图显示了从CPU开始，虚拟地址是如何进行转换并被使用的，这里除了牵涉MMU外，还有TLB以及各级的Cache。TLB也是一种特殊的Cache，我就不在这里介绍了，以后专门开个系列笔记介绍Cache吧。<br> <img src="https://i.imgur.com/f49He40l.jpg" alt="MMU AT"></p>
+<p>上图显示的是<code>VA-&gt;PA</code>在架构方面是如何实现的，下图显示的是地址空间如何进行<code>VA-&gt;PA</code>的转换。我们可以看出，不同区域的虚拟地址可以映射到同一区域的物理空间。同一区域的虚拟地址也可以映射到不同区域的物理空间。</p>
+<p> <img src="https://i.imgur.com/PwxzSdO.jpg" alt="MMU VA_2_PA"></p>
+<h2 id="MMU相关的两个重要寄存器"><a href="#MMU相关的两个重要寄存器" class="headerlink" title="MMU相关的两个重要寄存器"></a>MMU相关的两个重要寄存器</h2><h3 id="TTBRx"><a href="#TTBRx" class="headerlink" title="TTBRx"></a>TTBRx</h3><p>虽然ARMv8支持64bit的地址空间，但实际上最多只可以使用48bit的地址空间。<code>[63 : 48]</code>这16位是不会作为地址被使用的。在绝大多数情况下，这16位要么是<code>0xFFFF</code>要么是<code>0x0000</code>，因此64bit的地址空间被分成了3部分（如上图所示）。<br>如果<code>[63 : 48] = 0xFFFF</code>，那么它对应的虚拟地址将使用<code>TTBR1_ELx</code>寻找最低一级页表；如果<code>[63 : 48] = 0x0000</code>，那么它对应的虚拟地址将使用<code>TTBR0_ELx</code>寻找最低一级的页表。</p>
+<p><code>TTBRx</code>存的就是最低一级页表的<strong>物理地址</strong>。注意，除了<code>EL1</code>，这个寄存器也有<code>EL2</code>和<code>EL3</code>的版本，但只有<code>TTBR0</code>的版本。</p>
+<h3 id="TCR-ELx"><a href="#TCR-ELx" class="headerlink" title="TCR_ELx"></a>TCR_ELx</h3><p>这个寄存器是设置页表的一个重要的寄存器（它将控制所有级别的页表），它可以设置有效虚拟地址的位数（除了48bit外，还有42bit，39bit等），granule的大小（4/16/64KB）等等。</p>
+<p><img src="https://i.imgur.com/EjyPOGj.jpg" alt="TCR_EL1"></p>
+<p>上图中，<code>TxSZ</code>决定64 - 有效虚拟地址的位数；<code>TGx</code>决定转换颗粒的大小；<code>IRGN/ORGN</code>设置页表的cacheability；<code>SH</code>设置页表的shareability等。总之，这个寄存器主要是对页表进行设置。</p>
+<h2 id="VA-gt-PA转换的实例"><a href="#VA-gt-PA转换的实例" class="headerlink" title="VA-&gt;PA转换的实例"></a>VA-&gt;PA转换的实例</h2><p>下图一个2级页表、granule = 64KB、有效虚拟地址 = 42bit的例子，我们来看看有哪些需要注意的地方。<br><img src="https://i.imgur.com/AifBq46.png" alt="VA-&gt;PA"></p>
+<ol>
+<li><code>TTBRx</code>和页表中保存的页表地址都是物理地址；</li>
+<li>虚拟地址的最高位决定是去<code>TTBR0</code>还是<code>TTBR1</code>寻找页表；</li>
+<li>页表entry的数量 = granule size / 8B = 64KB / 8B = 8K；</li>
+<li>物理地址的位数可以和虚拟地址的位数不一样 - VA = 42bit，PA = 48bit，PA的大小由<code>TCR_ELx</code>中的<code>IPS</code>决定。</li>
+</ol>
+<h3 id="页表描述符"><a href="#页表描述符" class="headerlink" title="页表描述符"></a>页表描述符</h3><p>这篇笔记讨论的描述符都是基于这种格式 - <strong>Armv8-A AArch64 Long Descriptor format</strong>，一共有3类有效的描述符，请看下图：<br><img src="https://i.imgur.com/eJGdWNC.png" alt="描述符"></p>
+<ol>
+<li>指向页表的描述符；</li>
+<li>block entry的描述符 - block简单来说就是人为的合并/简化高级的页表，在Linux开启MMU前创建的临时页表用了2MB的block；</li>
+<li>table entry的描述符 - 可以理解成PTE。</li>
+</ol>
+<p>注意，页表中存储的地址都是物理地址，不管是页表的地址还是最后映射的地址，都是物理地址。MMU的硬件会处理好这些物理地址。</p>
+<p>在上图中，描述符都有attributes的位，下图显示了这些位的具体定义。要看完整的描述符的定义，还需要看<code>Arm Architecture Reference Manual</code>，具体内容请参考 - <code>D8.3 Translation table descriptor formats</code>。<br><img src="https://i.imgur.com/7NCyL42.png" alt="描述符位"><br>其中的<code>Index</code>是<code>MAIR_ELn</code>的索引，用于确定Cache policies，其它主要用于设置access permission, shareability等等。</p>
+<h3 id="Granule对页表的影响"><a href="#Granule对页表的影响" class="headerlink" title="Granule对页表的影响"></a>Granule对页表的影响</h3><p>页表的结构主要受两个因素影响 - 1.虚拟地址的位数；2. granule的值。我们下面看看<code>VA = 48bit, granule = 4KB</code>的一个例子：</p>
+<p><img src="https://i.imgur.com/zNdm0rR.png" alt="页表结构"></p>
+<p>下面我简单介绍下这个结构是如何构成的，</p>
+<ol>
+<li><code>granule = 4KB</code>，这个决定了最后一部分是<code>VA[11:0] = 12bit</code>；</li>
+<li>因为<code>granule = 4KB</code>，所以每个页表的大小是<code>4KB</code>。每个页表描述符是<code>64bit</code>，因此有512个entry，需要<code>9bit</code>；</li>
+<li>如果<code>VA</code>只有39bit，那么我们就直接忽略第0级页表，直接从第1级页表开始；</li>
+</ol>
+<h3 id="页表的属性"><a href="#页表的属性" class="headerlink" title="页表的属性"></a>页表的属性</h3><p>在页表描述符中，我们可以对不同区域的内存进行cache, memory, access等属性的设置。这些设置都具有继承性，因此，在低级页表描述符中设置的参数会覆盖之后几级设置的参数。因为<code>Lower attributes</code>只在最后一级页表出现，因此它设置的属性其实是不会被覆盖的。</p>
+<p>除了页表映射的内存空间，我们也可以给页表本身的属性进行设置。比如，页表是否cacheable，是否shareable等等，这些都是通过<code>TCR_EL1</code>进行设置 - <code>IRGN/ORGN</code>, <code>SH0/1</code>。</p>
+<p>注意，我们设置页表的cache/memory等属性，必须和其所在的内存空间的属性一样。</p>
+<p>到这里，MMU的基础知识基本就介绍完了。还有一些知识点，比如TLB, Cache以及不同EL的映射我就不介绍了，前两部分我会专门开几篇文章介绍，Cache本来就是一个大的知识点。至于不同EL的映射，这个我目前还没遇到实例，如果Linux内核遇到相关内容，我再做总结。</p>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href="/2022/04/03/02-ARMv8-MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/" title="02. ARMv8 MMU的初始化">
+                    <div class="nextTitle">02. ARMv8 MMU的初始化</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" title="Socket编程基础8 - 进程池和并发模型">
+                    <div class="prevTitle">Socket编程基础8 - 进程池和并发模型</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:50vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#MMU%E7%9A%84%E5%9F%BA%E6%9C%AC%E5%8A%9F%E8%83%BD"><span class="toc-number">1.</span> <span class="toc-text">MMU的基本功能</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MMU%E7%9B%B8%E5%85%B3%E7%9A%84%E4%B8%A4%E4%B8%AA%E9%87%8D%E8%A6%81%E5%AF%84%E5%AD%98%E5%99%A8"><span class="toc-number">2.</span> <span class="toc-text">MMU相关的两个重要寄存器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TTBRx"><span class="toc-number">2.1.</span> <span class="toc-text">TTBRx</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TCR-ELx"><span class="toc-number">2.2.</span> <span class="toc-text">TCR_ELx</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#VA-gt-PA%E8%BD%AC%E6%8D%A2%E7%9A%84%E5%AE%9E%E4%BE%8B"><span class="toc-number">3.</span> <span class="toc-text">VA-&gt;PA转换的实例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E8%A1%A8%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="toc-number">3.1.</span> <span class="toc-text">页表描述符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Granule%E5%AF%B9%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">3.2.</span> <span class="toc-text">Granule对页表的影响</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%B1%9E%E6%80%A7"><span class="toc-number">3.3.</span> <span class="toc-text">页表的属性</span></a></li></ol></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 24
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2023 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/24</span>
+            <a class="archive-post-title" href="/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/">14. 【Slab】6 - slab的一些情景分析</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/16</span>
+            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/27</span>
+            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - slab的基本操作 - kmem_cache_alloc()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/22</span>
+            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - slab的基本操作 - kmem_cache_create()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/20</span>
+            <a class="archive-post-title" href="/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/18</span>
+            <a class="archive-post-title" href="/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/">09. 【slab】1 - slab简介以及相关结构体</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/03</span>
+            <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/03</span>
+            <a class="archive-post-title" href="/2022/04/03/02-ARMv8-MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">02. ARMv8 MMU的初始化</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/01</span>
+            <a class="archive-post-title" href="/2022/04/01/01-ARMv8-MMU%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">01. ARMv8 MMU的基础知识</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2020 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/03</span>
+            <a class="archive-post-title" href="/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/">Socket编程基础8 - 进程池和并发模型</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/26</span>
+            <a class="archive-post-title" href="/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/">Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/24</span>
+            <a class="archive-post-title" href="/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/">Linux编程基础4 - 进程间通信(共享内存)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/22</span>
+            <a class="archive-post-title" href="/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/">Linux编程基础3 - 进程间通信(信号量)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/21</span>
+            <a class="archive-post-title" href="/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/">Linux编程基础2 - 进程间通信(匿名管道)</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span>
+            <a class="archive-post-title" href="/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/">Linux编程基础1 - I/O总结</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/13</span>
+            <a class="archive-post-title" href="/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/">Socket编程基础7 - 定时器</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/12</span>
+            <a class="archive-post-title" href="/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/">Socket编程基础6 - 高级IO函数</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/15</span>
+            <a class="archive-post-title" href="/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/">Socket编程基础5 - epoll实战</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/29</span>
+            <a class="archive-post-title" href="/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/">Socket编程基础4 - IO多路复用函数总结</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span>
+            <a class="archive-post-title" href="/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/">Socket编程基础3 - IO多路复用基础</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span>
+            <a class="archive-post-title" href="/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/">Socket编程基础2 - 基本回射服务实例</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span>
+            <a class="archive-post-title" href="/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/">Socket编程基础1 - 套接字和TCP/IP入门</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2017 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/09</span>
+            <a class="archive-post-title" href="/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/">一文搞懂C语言回调函数</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2016 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/31</span>
+            <a class="archive-post-title" href="/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/">C函数调用过程原理及函数栈帧分析(X86)</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="Linux内核">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内核
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux 4.14.311">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux 4.14.311
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ARMv8_64">
+                <span class="iconfont-archer">&#xe606;</span>
+                ARMv8_64
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="内存管理">
+                <span class="iconfont-archer">&#xe606;</span>
+                内存管理
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux 2.6.11">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux 2.6.11
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="C/C++">
+                <span class="iconfont-archer">&#xe606;</span>
+                C/C++
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux编程">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux编程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="文件I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                文件I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="标准I/O">
+                <span class="iconfont-archer">&#xe606;</span>
+                标准I/O
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="栈">
+                <span class="iconfont-archer">&#xe606;</span>
+                栈
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="X86汇编">
+                <span class="iconfont-archer">&#xe606;</span>
+                X86汇编
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="多进程">
+                <span class="iconfont-archer">&#xe606;</span>
+                多进程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="IPC">
+                <span class="iconfont-archer">&#xe606;</span>
+                IPC
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="管道">
+                <span class="iconfont-archer">&#xe606;</span>
+                管道
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="信号量">
+                <span class="iconfont-archer">&#xe606;</span>
+                信号量
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="共享内存">
+                <span class="iconfont-archer">&#xe606;</span>
+                共享内存
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="UNP">
+                <span class="iconfont-archer">&#xe606;</span>
+                UNP
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="网络编程">
+                <span class="iconfont-archer">&#xe606;</span>
+                网络编程
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="socket">
+                <span class="iconfont-archer">&#xe606;</span>
+                socket
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="回射服务">
+                <span class="iconfont-archer">&#xe606;</span>
+                回射服务
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="I/O模型">
+                <span class="iconfont-archer">&#xe606;</span>
+                I/O模型
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="select()">
+                <span class="iconfont-archer">&#xe606;</span>
+                select()
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="poll()">
+                <span class="iconfont-archer">&#xe606;</span>
+                poll()
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="epoll()">
+                <span class="iconfont-archer">&#xe606;</span>
+                epoll()
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ET/LT">
+                <span class="iconfont-archer">&#xe606;</span>
+                ET/LT
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="定时器">
+                <span class="iconfont-archer">&#xe606;</span>
+                定时器
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》">
+                <span class="iconfont-archer">&#xe606;</span>
+                《Linux高性能服务器编程》
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="进程池">
+                <span class="iconfont-archer">&#xe606;</span>
+                进程池
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="并发模型">
+                <span class="iconfont-archer">&#xe606;</span>
+                并发模型
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="技术广角">
+            <span class="iconfont-archer">&#xe60a;</span>
+            技术广角
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="个人随笔">
+            <span class="iconfont-archer">&#xe60a;</span>
+            个人随笔
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMetaRoot = "/"
+    if (siteMetaRoot === "undefined") {
+        siteMetaRoot = '/'
+    }
+    var siteMeta = {
+        url: "http://example.com",
+        root: siteMetaRoot,
+        author: "John Doe"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20211217"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20211217"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20211217" async></script>
+        
+        <!-- mermaid -->
+        
+    </body>
+</html>
