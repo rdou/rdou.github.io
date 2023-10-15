@@ -428,283 +428,46 @@
             
         
         <article class="index-post">
-            <a class="abstract-title" href="/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/">
+            <a class="abstract-title" href="/2023/02/02/%E3%80%90MEM04%E3%80%91memblock/">
                 
-                <span class="abstract-title-text">14. 【Slab】6 - slab的一些情景分析</span>
+                <span class="abstract-title-text">【MEM04】memblock</span>
             </a>
             <div class="abstract-content">
-                这篇笔记算是对slab的总结吧，我会边写边回顾之前的几篇笔记。有新的想法就添加，有不对的地方就修改。争取把slab的一系列流程搞清楚。我还是先从第一个场景，就是从零开始创建普通高速缓存写起。
-创建普通高速缓存创建第一个普通高速缓存这要从10. 【slab】2 - slab的基本操作 - kmem_cache_init()说起，在kmem_cache_init()中，内核创建的第一个高速缓存就...
+                在上一篇笔记中，我们已经看到了memblock的使用。memblock主要用在内核启动的早期，在伙伴系统启动前，内核使用memblock对物理内存进行管理。
+memblock的结构体和初始化memblock的结构体很简单，代码中的注释写的也很详细，我就不多解释了。
+1234567891011121314151617181920212223242526272829303132333435363...
             </div>
             <!-- read more -->
             
             <div class="abstract-post-meta">
                 <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/27">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/03/24</span>
+                <div class="abstract-date" title="Last updated: 2023/10/14">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/02</span>
                 </div>
                 <!-- tags -->
                 
                     <div class= abstract-tags >
     
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-</div>
-
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
         
         
             
         
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">
-                
-                <span class="abstract-title-text">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</span>
-            </a>
-            <div class="abstract-content">
-                到这，前面4篇slab笔记已经讨论了高速缓存、slab以及对象的分配。这篇笔记主要记录和释放、销毁相关的函数。在slab上花了太多时间和精力了，争取这是倒数第二篇，最后一篇准备综合的分析一些情况以及做总结。
-不多说，直接进入正题吧。这篇笔记我主要讨论下面几个函数：
-
-kmalloc()；
-kfree()；
-kmem_cache_free()；
-slab_destroy()；
-kmem_cac...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/28">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/03/16</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
     
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-</div>
-
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">
-                
-                <span class="abstract-title-text">12. 【Slab】4 - slab的基本操作 - kmem_cache_alloc()</span>
-            </a>
-            <div class="abstract-content">
-                在上一篇笔记 11. 【Slab】3 - Slab的基本操作 - kmem_cache_create() 中，我们完成了对高速缓存的分配。在在那篇笔记中，我们提到了kmem_cache_alloc()函数，这个函数用于获取对象，是一个很重要的函数。在这篇笔记中，我将仔细分析这个函数。有了这个函数，我们就可以获取对象了，并且这里和伙伴系统又联系在了一起。通过学习这个函数，我们可以知道slab是...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/24">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/27</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-</div>
-
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">
-                
-                <span class="abstract-title-text">11. 【Slab】3 - slab的基本操作 - kmem_cache_create()</span>
-            </a>
-            <div class="abstract-content">
-                在上一篇笔记10. 【slab】2 - slab的基本操作 - kmem_cache_init()中，当遇到kmem_cache_create()时，我说之后会写笔记进行总结。这篇笔记就是对这个函数的详细总结。内容比较多、比较杂，我自己也写的乱，需要好好理解思考，静下来看。
-kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(kmem_cache_init())，...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/28">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/22</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-</div>
-
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">
-                
-                <span class="abstract-title-text">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</span>
-            </a>
-            <div class="abstract-content">
-                在上一篇笔记09. 【slab】1 - slab简介以及相关结构体中，我已经介绍了slab的基本原理以及其使用的数据结构。在这篇笔记中，我将开始第一个函数 - kmem_cache_init()的分析。 
-这个函数在start_kernel()中被调用，用于初始化slab。在这之前，伙伴系统已经初始化完成。kmem_cache_init()这个函数主要分4步：
-
-初始化cache_cache...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/24">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/20</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-</div>
-
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/">
-                
-                <span class="abstract-title-text">09. 【slab】1 - slab简介以及相关结构体</span>
-            </a>
-            <div class="abstract-content">
-                最近开始学习slab，感觉内容比较杂乱，花了不少时间稍微明白了一些，这里通过几篇笔记总结下学习的slab知识。
-为什么需要slab关于这点，书上和网上都说了很多，我这里简单地说3点：
-
-可以分配比PAGE_SIZE更小的内存空间，大大地降低了内部碎片；
-效率更高。第一，slab的分配和释放比伙伴系统更轻量级，速度更快，使用资源更少；第二，slab可以更快地分配和释放经常使用的对象（释放后并不...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/03/24">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/02/18</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 2.6.11">Linux 2.6.11</a>
-    
-</div>
-
-                
-            </div>
-        </article>
-        <div class="index-post-divider"></div>
-    
-        
-        
-        
-        
-            
-        
-        <article class="index-post">
-            <a class="abstract-title" href="/2022/04/03/02-ARMv8-MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">
-                
-                <span class="abstract-title-text">02. ARMv8 MMU的初始化</span>
-            </a>
-            <div class="abstract-content">
-                在上一篇笔记【TODO】中，我已经总结了ARMv8中MMU的基础知识。这篇笔记主要总结在Linux启动阶段，MMU是如何开启，以及临时页表是如何建立起来的。由于ARMv8有多种Exception Level, Security Level以及Execute Level等，为了方便起见，我这里就分析一种：EL1, NS, AARCH64, 4K页面。
-本文所用的部分宏为了便于写这篇笔记，很有必...
-            </div>
-            <!-- read more -->
-            
-            <div class="abstract-post-meta">
-                <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/04/07">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/04/03</span>
-                </div>
-                <!-- tags -->
-                
-                    <div class= abstract-tags >
-    
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
-    
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 4.14.311">Linux 4.14.311</a>
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
     
         <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
     
 </div>
 
@@ -720,38 +483,154 @@ kmem_cache_create()主要用于创建专用高速缓存，但在初始化阶段(
             
         
         <article class="index-post">
-            <a class="abstract-title" href="/2022/04/01/01-ARMv8-MMU%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">
+            <a class="abstract-title" href="/2023/01/15/%E3%80%90MEM03%E3%80%91fixmap%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">
                 
-                <span class="abstract-title-text">01. ARMv8 MMU的基础知识</span>
+                <span class="abstract-title-text">【MEM03】fixmap和相关页表的创建</span>
             </a>
             <div class="abstract-content">
-                这篇笔记主要记录ARMv8 MMU的学习，学习资料主要是下面两个文档：
-
-Armv8-A Address Translation
-ARM Cortex-A Series Programmer&#39;s Guide for ARMv8-A
-
-第1个其实是将2中不同章节和地址转换相关的内容放在一起，因此免去了查找不同章节内容的痛苦。相比于2，我会更多地使用1中内容。
-ARMv8有多个Excep...
+                接上篇笔记，在上一篇笔记中，我们完成了最初的几个页表的创建，接下来就要开始start_kernel的工作了。到目前为止，内核还不知道硬件有多少内存空间，也不知道其它硬件的信息。Linux内核通过DTS文件来识别硬件并获取相关信息。这里有个重要的信息就是内存的大小。
+下面这个例子来自LoyenWang的博客
+12345// arch/arm64/boot/dts/freescale/fsl-l...
             </div>
             <!-- read more -->
             
             <div class="abstract-post-meta">
                 <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/04/07">
-                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/04/01</span>
+                <div class="abstract-date" title="Last updated: 2023/10/14">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/01/15</span>
                 </div>
                 <!-- tags -->
                 
                     <div class= abstract-tags >
     
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
+    
     
         <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Linux 4.14.311">Linux 4.14.311</a>
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
     
         <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="内存管理">内存管理</a>
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
+    
+</div>
+
+                
+            </div>
+        </article>
+        <div class="index-post-divider"></div>
+    
+        
+        
+        
+        
+            
+            
+        
+        <article class="index-post">
+            <a class="abstract-title" href="/2023/01/05/ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">
+                
+                <span class="abstract-title-text">ARMv8 MMU和Linux的初始化</span>
+            </a>
+            <div class="abstract-content">
+                【Linux内存管理01】本文主要介绍ARMv8中MMU的基本信息（寄存器、页表、VA->PA转换实例等），内容主要来自ARM官方文档外加部分网络内容。
+            </div>
+            <!-- read more -->
+            
+            <div class="abstract-post-meta">
+                <!-- date -->
+                <div class="abstract-date" title="Last updated: 2023/10/15">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/01/05</span>
+                </div>
+                <!-- tags -->
+                
+                    <div class= abstract-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
+    
+</div>
+
+                
+            </div>
+        </article>
+        <div class="index-post-divider"></div>
+    
+        
+        
+        
+        
+            
+            
+        
+        <article class="index-post">
+            <a class="abstract-title" href="/2022/12/13/ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">
+                
+                <span class="abstract-title-text">ARMv8 MMU的基础知识</span>
+            </a>
+            <div class="abstract-content">
+                【Linux内存管理01】本文主要介绍ARMv8中MMU的基本信息（寄存器、页表、VA->PA转换实例等），内容主要来自ARM官方文档外加部分网络内容。
+            </div>
+            <!-- read more -->
+            
+            <div class="abstract-post-meta">
+                <!-- date -->
+                <div class="abstract-date" title="Last updated: 2023/10/15">
+                    <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2022/12/13</span>
+                </div>
+                <!-- tags -->
+                
+                    <div class= abstract-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
     
 </div>
 
@@ -873,244 +752,7 @@ ARMv8有多个Excep...
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
     
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         
         
@@ -1133,7 +775,7 @@ ARMv8有多个Excep...
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 24
+        Total : 5
         </div>
         <!-- search  -->
         
@@ -1149,38 +791,20 @@ ARMv8有多个Excep...
             
         
         <li class="archive-post-item">
-            <span class="archive-post-date">03/24</span>
-            <a class="archive-post-title" href="/2023/03/24/14-%E3%80%90Slab%E3%80%916-slab%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%85%E6%99%AF%E5%88%86%E6%9E%90-md/">14. 【Slab】6 - slab的一些情景分析</a>
+            <span class="archive-post-date">02/02</span>
+            <a class="archive-post-title" href="/2023/02/02/%E3%80%90MEM04%E3%80%91memblock/">【MEM04】memblock</a>
         </li>
     
         
         <li class="archive-post-item">
-            <span class="archive-post-date">03/16</span>
-            <a class="archive-post-title" href="/2023/03/16/13-%E3%80%90Slab%E3%80%915-Slab%E4%BB%A5%E5%8F%8A%E5%AF%B9%E8%B1%A1%E7%9A%84%E9%87%8A%E6%94%BE%E5%92%8C%E9%94%80%E6%AF%81/">13. 【Slab】5 - slab、高速缓存以及对象的释放和销毁</a>
+            <span class="archive-post-date">01/15</span>
+            <a class="archive-post-title" href="/2023/01/15/%E3%80%90MEM03%E3%80%91fixmap%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">【MEM03】fixmap和相关页表的创建</a>
         </li>
     
         
         <li class="archive-post-item">
-            <span class="archive-post-date">02/27</span>
-            <a class="archive-post-title" href="/2023/02/27/12-%E3%80%90Slab%E3%80%914-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-alloc/">12. 【Slab】4 - slab的基本操作 - kmem_cache_alloc()</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/22</span>
-            <a class="archive-post-title" href="/2023/02/22/11-%E3%80%90Slab%E3%80%913-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-create/">11. 【Slab】3 - slab的基本操作 - kmem_cache_create()</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/20</span>
-            <a class="archive-post-title" href="/2023/02/20/10-%E3%80%90Slab%E3%80%912-Slab%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C-kmem-cache-init/">10. 【slab】2 - slab的基本操作 - kmem_cache_init()</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/18</span>
-            <a class="archive-post-title" href="/2023/02/18/09-%E3%80%90Slab%E3%80%911-Slab%E7%AE%80%E4%BB%8B%E4%BB%A5%E5%8F%8A%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93/">09. 【slab】1 - slab简介以及相关结构体</a>
+            <span class="archive-post-date">01/05</span>
+            <a class="archive-post-title" href="/2023/01/05/ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">ARMv8 MMU和Linux的初始化</a>
         </li>
     
         
@@ -1200,131 +824,8 @@ ARMv8有多个Excep...
             
         
         <li class="archive-post-item">
-            <span class="archive-post-date">04/03</span>
-            <a class="archive-post-title" href="/2022/04/03/02-ARMv8-MMU%E5%92%8CLinux%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">02. ARMv8 MMU的初始化</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">04/01</span>
-            <a class="archive-post-title" href="/2022/04/01/01-ARMv8-MMU%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">01. ARMv8 MMU的基础知识</a>
-        </li>
-    
-        
-            
-            
-                
-                </ul>
-            
-            <div class="archive-year"> 2020 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">07/03</span>
-            <a class="archive-post-title" href="/2020/07/03/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%808-%E8%BF%9B%E7%A8%8B%E6%B1%A0%E5%92%8C%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/">Socket编程基础8 - 进程池和并发模型</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">06/26</span>
-            <a class="archive-post-title" href="/2020/06/26/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-POSIX%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/">Linux编程基础5 - 进程间通信(POSIX共享内存)</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">06/24</span>
-            <a class="archive-post-title" href="/2020/06/24/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98/">Linux编程基础4 - 进程间通信(共享内存)</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">06/22</span>
-            <a class="archive-post-title" href="/2020/06/22/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E4%BF%A1%E5%8F%B7%E9%87%8F/">Linux编程基础3 - 进程间通信(信号量)</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">06/21</span>
-            <a class="archive-post-title" href="/2020/06/21/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802-%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1-%E7%AE%A1%E9%81%93/">Linux编程基础2 - 进程间通信(匿名管道)</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">06/18</span>
-            <a class="archive-post-title" href="/2020/06/18/Linux%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801-IO%E6%80%BB%E7%BB%93/">Linux编程基础1 - I/O总结</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">06/13</span>
-            <a class="archive-post-title" href="/2020/06/13/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%807%20-%20%E5%AE%9A%E6%97%B6%E5%99%A8/">Socket编程基础7 - 定时器</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">06/12</span>
-            <a class="archive-post-title" href="/2020/06/12/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%806%20-%20%E9%AB%98%E7%BA%A7IO%E5%87%BD%E6%95%B0/">Socket编程基础6 - 高级IO函数</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">05/15</span>
-            <a class="archive-post-title" href="/2020/05/15/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%805%20-%20epoll%E5%AE%9E%E6%88%98/">Socket编程基础5 - epoll实战</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">04/29</span>
-            <a class="archive-post-title" href="/2020/04/29/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%804%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%87%BD%E6%95%B0%E6%80%BB%E7%BB%93/">Socket编程基础4 - IO多路复用函数总结</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">04/25</span>
-            <a class="archive-post-title" href="/2020/04/25/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%803%20-%20IO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%9F%BA%E7%A1%80/">Socket编程基础3 - IO多路复用基础</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">04/20</span>
-            <a class="archive-post-title" href="/2020/04/20/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%802%20-%20%E5%9F%BA%E6%9C%AC%E5%9B%9E%E5%B0%84%E6%9C%8D%E5%8A%A1%E5%AE%9E%E4%BE%8B/">Socket编程基础2 - 基本回射服务实例</a>
-        </li>
-    
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">04/16</span>
-            <a class="archive-post-title" href="/2020/04/16/Socket%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%801%20-%20%E5%A5%97%E6%8E%A5%E5%AD%97%E5%92%8CTCP-IP%E5%85%A5%E9%97%A8/">Socket编程基础1 - 套接字和TCP/IP入门</a>
-        </li>
-    
-        
-            
-            
-                
-                </ul>
-            
-            <div class="archive-year"> 2017 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">02/09</span>
-            <a class="archive-post-title" href="/2017/02/09/%E4%B8%80%E6%96%87%E6%90%9E%E6%87%82C%E8%AF%AD%E8%A8%80%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0/">一文搞懂C语言回调函数</a>
-        </li>
-    
-        
-            
-            
-                
-                </ul>
-            
-            <div class="archive-year"> 2016 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/31</span>
-            <a class="archive-post-title" href="/2016/12/31/C%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E5%87%BD%E6%95%B0%E6%A0%88%E5%B8%A7%E5%88%86%E6%9E%90-X86/">C函数调用过程原理及函数栈帧分析(X86)</a>
+            <span class="archive-post-date">12/13</span>
+            <a class="archive-post-title" href="/2022/12/13/ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">ARMv8 MMU的基础知识</a>
         </li>
     
     </div>
@@ -1338,9 +839,9 @@ ARMv8有多个Excep...
                 Linux内核
             </span>
         
-            <span class="sidebar-tag-name" data-tags="Linux 4.14.311">
+            <span class="sidebar-tag-name" data-tags="Linux_5_0">
                 <span class="iconfont-archer">&#xe606;</span>
-                Linux 4.14.311
+                Linux_5_0
             </span>
         
             <span class="sidebar-tag-name" data-tags="ARMv8_64">
@@ -1348,134 +849,9 @@ ARMv8有多个Excep...
                 ARMv8_64
             </span>
         
-            <span class="sidebar-tag-name" data-tags="内存管理">
+            <span class="sidebar-tag-name" data-tags="Linux内存管理">
                 <span class="iconfont-archer">&#xe606;</span>
-                内存管理
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="Linux 2.6.11">
-                <span class="iconfont-archer">&#xe606;</span>
-                Linux 2.6.11
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="C/C++">
-                <span class="iconfont-archer">&#xe606;</span>
-                C/C++
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="Linux编程">
-                <span class="iconfont-archer">&#xe606;</span>
-                Linux编程
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="文件I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                文件I/O
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="标准I/O">
-                <span class="iconfont-archer">&#xe606;</span>
-                标准I/O
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="栈">
-                <span class="iconfont-archer">&#xe606;</span>
-                栈
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="X86汇编">
-                <span class="iconfont-archer">&#xe606;</span>
-                X86汇编
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="多进程">
-                <span class="iconfont-archer">&#xe606;</span>
-                多进程
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="IPC">
-                <span class="iconfont-archer">&#xe606;</span>
-                IPC
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="管道">
-                <span class="iconfont-archer">&#xe606;</span>
-                管道
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="信号量">
-                <span class="iconfont-archer">&#xe606;</span>
-                信号量
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="共享内存">
-                <span class="iconfont-archer">&#xe606;</span>
-                共享内存
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="UNP">
-                <span class="iconfont-archer">&#xe606;</span>
-                UNP
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="网络编程">
-                <span class="iconfont-archer">&#xe606;</span>
-                网络编程
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="socket">
-                <span class="iconfont-archer">&#xe606;</span>
-                socket
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="回射服务">
-                <span class="iconfont-archer">&#xe606;</span>
-                回射服务
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="I/O模型">
-                <span class="iconfont-archer">&#xe606;</span>
-                I/O模型
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="select()">
-                <span class="iconfont-archer">&#xe606;</span>
-                select()
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="poll()">
-                <span class="iconfont-archer">&#xe606;</span>
-                poll()
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="epoll()">
-                <span class="iconfont-archer">&#xe606;</span>
-                epoll()
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="ET/LT">
-                <span class="iconfont-archer">&#xe606;</span>
-                ET/LT
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="定时器">
-                <span class="iconfont-archer">&#xe606;</span>
-                定时器
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="《Linux高性能服务器编程》">
-                <span class="iconfont-archer">&#xe606;</span>
-                《Linux高性能服务器编程》
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="进程池">
-                <span class="iconfont-archer">&#xe606;</span>
-                进程池
-            </span>
-        
-            <span class="sidebar-tag-name" data-tags="并发模型">
-                <span class="iconfont-archer">&#xe606;</span>
-                并发模型
+                Linux内存管理
             </span>
         
     </div>
@@ -1489,14 +865,14 @@ ARMv8有多个Excep...
         <div class="sidebar-panel-categories">
     <div class="sidebar-categories-name">
     
-        <span class="sidebar-category-name" data-categories="技术广角">
-            <span class="iconfont-archer">&#xe60a;</span>
-            技术广角
-        </span>
-    
         <span class="sidebar-category-name" data-categories="个人随笔">
             <span class="iconfont-archer">&#xe60a;</span>
             个人随笔
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="硬核技术">
+            <span class="iconfont-archer">&#xe60a;</span>
+            硬核技术
         </span>
     
     </div>
