@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="在上一篇笔记ARMv8 MMU的基础知识中，我们已经了解了ARMv8中MMU的基础知识。这篇笔记将重点关注Linux内核的启动阶段，看看MMU是如何开启，以及临时页表是如何建立起来的。 上电后发生了什么在介绍Linux内核的启动流程前，我们简单来看看硬件上电后进行的一系列操作。 当硬件上电后，硬件会进行一些初始化，同时ARM Core会跳入RESET Vector进行一系列的初始化。之后BootL">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ARMv8 MMU和Linux的启动">
+<meta property="og:url" content="http://example.com/2023/01/05/ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在上一篇笔记ARMv8 MMU的基础知识中，我们已经了解了ARMv8中MMU的基础知识。这篇笔记将重点关注Linux内核的启动阶段，看看MMU是如何开启，以及临时页表是如何建立起来的。 上电后发生了什么在介绍Linux内核的启动流程前，我们简单来看看硬件上电后进行的一系列操作。 当硬件上电后，硬件会进行一些初始化，同时ARM Core会跳入RESET Vector进行一系列的初始化。之后BootL">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://dflund.se/~triad/images/inital-page-table.jpg">
+<meta property="article:published_time" content="2023-01-05T19:36:04.000Z">
+<meta property="article:modified_time" content="2023-10-15T16:22:05.139Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Linux_5_0">
+<meta property="article:tag" content="ARMv8_64">
+<meta property="article:tag" content="Linux内存管理">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://dflund.se/~triad/images/inital-page-table.jpg">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/touxiang.png">
+    
+    <title>ARMv8 MMU和Linux的启动 · 从零到负一</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20211217" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20211217" as="style">
+    <link rel="stylesheet" href="/css/dark.css">
+    <link rel="stylesheet" href="/css/mobile.css?v=20211217" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20211217" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20211217" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header header-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>从零到负一</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">从零到负一</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">ARMv8 MMU和Linux的启动</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:40vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+    
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg-linux.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                ARMv8 MMU和Linux的启动
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
+    
+</div>
+
+                
+                <!-- 文章字数统计 -->
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2023/01/05</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>在上一篇笔记<a target="_blank" rel="noopener" href="https://rdou.github.io/2022/12/13/ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">ARMv8 MMU的基础知识</a>中，我们已经了解了ARMv8中MMU的基础知识。这篇笔记将重点关注Linux内核的启动阶段，看看MMU是如何开启，以及临时页表是如何建立起来的。</p>
+<h2 id="上电后发生了什么"><a href="#上电后发生了什么" class="headerlink" title="上电后发生了什么"></a>上电后发生了什么</h2><p>在介绍Linux内核的启动流程前，我们简单来看看硬件上电后进行的一系列操作。</p>
+<p>当硬件上电后，硬件会进行一些初始化，同时ARM Core会跳入<code>RESET Vector</code>进行一系列的初始化。之后<code>BootLoader</code>会将Linux内核从外部存储器（SD卡，FLash ROM等）载入物理内存（一般是载入到特定的地址），然后Linux内核就可以开始执行了（从<code>head.S</code>处开始执行）。</p>
+<p>下图是一个内核镜像文件的<code>VA-&gt;PA</code>映射，该图来自 <a target="_blank" rel="noopener" href="https://people.kernel.org/linusw/how-the-arm32-kernel-starts">How the ARM32 kernel starts</a>（这是一个<code>32bit</code>系统的映射图，<code>64bit</code>的也类似），我们可以看出几点：</p>
+<ol>
+<li>内核镜像文件在物理内存中存放于低地址位，而其对应的虚拟地址是高地址位；</li>
+<li><code>PHYS_OFFSET</code>和<code>PAGE_OFFSET</code>分别用于物理地址和虚拟地址；</li>
+<li>其中有部分<code>VA -&gt; PA</code>是一一对应的，这部分用于保证<code>MMU</code>开启前后，指令的读取不会出错。</li>
+</ol>
+<p><img src="https://dflund.se/~triad/images/inital-page-table.jpg"></p>
+<h2 id="Linux内核的入口程序"><a href="#Linux内核的入口程序" class="headerlink" title="Linux内核的入口程序"></a>Linux内核的入口程序</h2><p>从这里开始，我们就要和汇编语言打交道了。说实话，我对汇编只能说是勉强能看懂，因此接下来的内容不需要深入理解。关于<code>MMU</code>的开启的部分可以从大的原理上思考下为什么要这样做，至于源码，简单看看即可。</p>
+<p>当<code>BootLoader</code>完成它的任务后，Linux内核就开始接管接下来的工作。这部分工作从 head.S 这个文件开始。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./arch/arm64/kernel/head.S </span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * The following callee saved general purpose registers are used on the</span></span><br><span class="line"><span class="comment"> * primary lowlevel boot path:</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *  Register   Scope                      Purpose</span></span><br><span class="line"><span class="comment"> *  x21        stext() .. start_kernel()  FDT pointer passed at boot in x0</span></span><br><span class="line"><span class="comment"> *  x23        stext() .. start_kernel()  physical misalignment/KASLR offset</span></span><br><span class="line"><span class="comment"> *  x28        __create_page_tables()     callee preserved temp register</span></span><br><span class="line"><span class="comment"> *  x19/x20    __primary_switch()         callee preserved temp registers</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">ENTRY(stext)</span><br><span class="line">    bl   preserve_boot_args</span><br><span class="line">    bl   el2_setup                        <span class="comment">// Drop to EL1, w0=cpu_boot_mode</span></span><br><span class="line">    adrp x23, __PHYS_OFFSET</span><br><span class="line">    <span class="keyword">and</span>  x23, x23, MIN_KIMG_ALIGN - <span class="number">1</span>     <span class="comment">// KASLR offset, defaults to 0</span></span><br><span class="line">    bl   set_cpu_boot_mode_flag</span><br><span class="line">    bl   __create_page_tables</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * The following calls CPU setup code, see arch/arm64/mm/proc.S for</span></span><br><span class="line"><span class="comment">     * details.</span></span><br><span class="line"><span class="comment">     * On return, the CPU will be ready for the MMU to be turned on and</span></span><br><span class="line"><span class="comment">     * the TCR will have been set.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    bl   __cpu_setup                      <span class="comment">// initialise processor</span></span><br><span class="line">    b    __primary_switch</span><br><span class="line">ENDPROC(stext)</span><br></pre></td></tr></table></figure>
+<p>这里主要看看和<code>MMU</code>相关的部分，因此我们直接跳到<code>__create_page_tables()</code>这个函数。</p>
+<h2 id="页表的创建"><a href="#页表的创建" class="headerlink" title="页表的创建"></a>页表的创建</h2><p>在Linux的启动阶段，内核创建了多个页表，包括<code>idmap_pg_dir</code>, <code>swapper_pg_dir</code>和<code>init_pg_dir</code>。其中第一个用于确保开启<code>MMU</code>前后取指地址保持不变，第三个用于在启动阶段映射Linux内核，第二个在之后的<code>paging_init()</code>中会取代<code>init_pg_dir</code>。在<code>MMU</code>开启前，系统是直接使用物理地址进行取指，而开启<code>MMU</code>后，由于有了<code>VA-&gt;PA</code>的映射，<code>PA</code>就可能不是之前的<code>PA</code>了，因此需要做一个<code>VA = PA</code>的映射来保证内核的正常工作。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./arch/arm64/kernel/vmlinux.lds.S</span></span><br><span class="line"></span><br><span class="line">. = ALIGN(PAGE_SIZE);</span><br><span class="line">idmap_pg_dir = .;</span><br><span class="line">. += IDMAP_DIR_SIZE;</span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line">swapper_pg_dir = .;</span><br><span class="line">. += SWAPPER_DIR_SIZE;</span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line">BSS_SECTION(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>)</span><br><span class="line"></span><br><span class="line">. = ALIGN(PAGE_SIZE);</span><br><span class="line">init_pg_dir = .;</span><br><span class="line">. += INIT_DIR_SIZE;</span><br><span class="line">init_pg_end = .;</span><br></pre></td></tr></table></figure>
+<h3 id="create-page-tables-Part-1"><a href="#create-page-tables-Part-1" class="headerlink" title="__create_page_tables Part 1"></a>__create_page_tables Part 1</h3><p>这一步主要是做一些准备工作，比如获取相关页表的物理地址、清空页表等。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./arch/arm64/kernel/head.S </span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Setup the initial page tables. We only setup the barest amount which is</span></span><br><span class="line"><span class="comment"> * required to get the kernel running. The following sections are required:</span></span><br><span class="line"><span class="comment"> *   - identity mapping to enable the MMU (low address, TTBR0)</span></span><br><span class="line"><span class="comment"> *   - first few MB of the kernel linear mapping to jump to once the MMU has</span></span><br><span class="line"><span class="comment"> *     been enabled</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">__create_page_tables:</span><br><span class="line">    mov  x28, lr</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Invalidate the init page tables to avoid potential dirty cache lines</span></span><br><span class="line"><span class="comment">     * being evicted. Other page tables are allocated in rodata as part of</span></span><br><span class="line"><span class="comment">     * the kernel image, and thus are clean to the PoC per the boot</span></span><br><span class="line"><span class="comment">     * protocol.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">// ----------------------------------------------------------------------- (1)</span></span><br><span class="line">    <span class="comment">// 使用adrp指令，将init_pg_dir和init_pg_end的相对地址放入x0/x1</span></span><br><span class="line">    <span class="comment">// 这属于PIC - Position-Independent Code，这篇笔记最后会简单介绍PIC相关内容</span></span><br><span class="line">    adrp x0, init_pg_dir</span><br><span class="line">    adrp x1, init_pg_end</span><br><span class="line">    sub  x1, x1, x0</span><br><span class="line">    <span class="comment">// ----------------------------------------------------------------------- (2)</span></span><br><span class="line">    <span class="comment">// 在MMU开启前，dcache是不会被使用的（memory不是cacheable类型）这么做是为了避免产生</span></span><br><span class="line">    <span class="comment">// 不必要的问题</span></span><br><span class="line">    bl   __inval_dcache_area</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Clear the init page tables.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">// ----------------------------------------------------------------------- (3)</span></span><br><span class="line">    <span class="comment">// 清空init_pg_dir页表 </span></span><br><span class="line">    adrp x0,  init_pg_dir</span><br><span class="line">    adrp x1,  init_pg_end</span><br><span class="line">    sub  x1,  x1, x0</span><br><span class="line"><span class="number">1</span>:  stp  xzr, xzr, [x0], #<span class="number">16</span></span><br><span class="line">    stp  xzr, xzr, [x0], #<span class="number">16</span></span><br><span class="line">    stp  xzr, xzr, [x0], #<span class="number">16</span></span><br><span class="line">    stp  xzr, xzr, [x0], #<span class="number">16</span></span><br><span class="line">    subs x1,  x1, #<span class="number">64</span></span><br><span class="line">    b.ne <span class="number">1b</span></span><br><span class="line"></span><br><span class="line">    mov  x7, SWAPPER_MM_MMUFLAGS</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Create the identity mapping.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">// ----------------------------------------------------------------------- (4)</span></span><br><span class="line">    adrp  x0, idmap_pg_dir</span><br><span class="line">    adrp  x3, __idmap_text_start <span class="comment">// __pa(__idmap_text_start)</span></span><br><span class="line">    ...</span><br><span class="line">    ...</span><br></pre></td></tr></table></figure>
+<p>(1) 使用<code>adrp</code>指令获取<code>idmap_pg_dir</code>物理地址（这里使用PIC技术）并存入<code>x0</code>；<br>(2) 中清空这几个页表所在的<code>dcache</code> - 在<code>MMU</code>开启前，<code>dcache</code>是不会被使用的（内存不是cacheable类型）这么做是为了避免不必要的问题；<br>(3) 将这几个页表置零（表示这些页表项都是无效的）；<br>(4) 获取<code>idmap_pg_dir</code>和<code>__idmap_text_start</code>，分别存入<code>x0</code>和<code>x3</code>；</p>
+<h3 id="create-page-tables-Part-2"><a href="#create-page-tables-Part-2" class="headerlink" title="__create_page_tables Part 2"></a>__create_page_tables Part 2</h3><p>接下来，我们就要开始初始化PGD, PUD, PMD和PTE了，</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">    <span class="comment">// ./arch/arm64/kernel/head.S </span></span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">    ...    </span><br><span class="line">    mov 			   x4, EXTRA_PTRS</span><br><span class="line">    create_table_entry x0, x3, EXTRA_SHIFT, x4, x5, x6</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * If VA_BITS == 48, we don&#x27;t have to configure an additional</span></span><br><span class="line"><span class="comment">     * translation level, but the top-level table has more entries.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    mov   x4, #<span class="number">1</span> &lt;&lt; (PHYS_MASK_SHIFT - PGDIR_SHIFT)</span><br><span class="line">    str_l x4, idmap_ptrs_per_pgd, x5</span><br><span class="line"><span class="number">1</span>:</span><br><span class="line">    ldr_l x4, idmap_ptrs_per_pgd</span><br><span class="line">    mov   x5, x3                  <span class="comment">// __pa(__idmap_text_start)</span></span><br><span class="line">    adr_l x6, __idmap_text_end    <span class="comment">// __pa(__idmap_text_end)</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// ----------------------------------------------------------------------- (1)</span></span><br><span class="line">    <span class="comment">// 将[__idmap_text_start, __idmap_text_end]区域一一对应地映射到虚拟内存空间</span></span><br><span class="line">    map_memory x0, x1, x3, x6, x7, x3, x4, x10, x11, x12, x13, x14</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Map the kernel image (starting with PHYS_OFFSET).</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    adrp  x0, init_pg_dir</span><br><span class="line">    mov_q x5, KIMAGE_VADDR + TEXT_OFFSET    <span class="comment">// compile time __va(_text)</span></span><br><span class="line">    add   x5, x5, x23           <span class="comment">// add KASLR displacement</span></span><br><span class="line">    mov   x4, PTRS_PER_PGD</span><br><span class="line">    adrp  x6, _end              <span class="comment">// runtime __pa(_end)</span></span><br><span class="line">    adrp  x3, _text             <span class="comment">// runtime __pa(_text)</span></span><br><span class="line">    sub   x6, x6, x3            <span class="comment">// _end - _text</span></span><br><span class="line">    add   x6, x6, x5            <span class="comment">// runtime __va(_end)</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// ----------------------------------------------------------------------- (2)</span></span><br><span class="line">    <span class="comment">// 将[_text, _end]区域，也就是整个kernel区域映射到虚拟空间</span></span><br><span class="line">    map_memory x0, x1, x5, x6, x7, x3, x4, x10, x11, x12, x13, x14</span><br><span class="line">    ...</span><br><span class="line">    ...</span><br></pre></td></tr></table></figure>
+<p>这里我就不深究细节了，简单来说就是<br>(1) 将<code>__idmap_text_start</code>到<code>__idmap_text_end</code>的区域一一对应地映射到虚拟内存空间。这样，即使<code>MMU</code>开启了，ARM Core也能正常地取指。注意，<code>MMU</code>开启的部分代码一定在<code>__idmap_text_start</code>到<code>__idmap_text_end</code>之间。<br>(2) 将整个内核映射到虚拟空间。注意，这部分包括<code>__idmap_text_start</code>到<code>__idmap_text_end</code>的区间，也就是说这部分其实映射了两遍。</p>
+<p>具体的映射形式可以参考最开始的那幅图，注意其中有部分映射了两遍。</p>
+<h2 id="开启MMU"><a href="#开启MMU" class="headerlink" title="开启MMU"></a>开启MMU</h2><p><code>MMU</code>是在<code>__primary_switch</code>中通过调用<code>__enable_mmu</code>开启的。在开启MMU前，我们还需要对ARM的各种寄存器进行设置，这里我就不详细记录了。下面直接看<code>__primary_switch</code>和<code>__enable_mmu</code>这两个函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./arch/arm64/kernel/head.S </span></span><br><span class="line"></span><br><span class="line">__primary_switch:</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_RANDOMIZE_BASE</span></span><br><span class="line">    mov x19, x0               <span class="comment">// preserve new SCTLR_EL1 value</span></span><br><span class="line">    mrs x20, sctlr_el1        <span class="comment">// preserve old SCTLR_EL1 value</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    adrp x1, init_pg_dir</span><br><span class="line">    bl   __enable_mmu</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_RELOCATABLE</span></span><br><span class="line">    bl   __relocate_kernel</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_RANDOMIZE_BASE</span></span><br><span class="line">    ldr  x8, =__primary_switched</span><br><span class="line">    adrp x0, __PHYS_OFFSET</span><br><span class="line">    blr  x8</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * If we return here, we have a KASLR displacement in x23 which we need</span></span><br><span class="line"><span class="comment">     * to take into account by discarding the current kernel mapping and</span></span><br><span class="line"><span class="comment">     * creating a new one.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    pre_disable_mmu_workaround</span><br><span class="line">    msr  sctlr_el1, x20            <span class="comment">// disable the MMU</span></span><br><span class="line">    isb</span><br><span class="line">    bl   __create_page_tables      <span class="comment">// recreate kernel mapping</span></span><br><span class="line"></span><br><span class="line">    tlbi vmalle1                   <span class="comment">// Remove any stale TLB entries</span></span><br><span class="line">    dsb  nsh</span><br><span class="line"></span><br><span class="line">    msr  sctlr_el1, x19            <span class="comment">// re-enable the MMU</span></span><br><span class="line">    isb</span><br><span class="line">    ic   iallu                     <span class="comment">// flush instructions fetched</span></span><br><span class="line">    dsb  nsh                       <span class="comment">// via old mapping</span></span><br><span class="line">    isb</span><br><span class="line"></span><br><span class="line">    bl   __relocate_kernel</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="comment">// ------------------------------------------------------------------------------------------- (1)</span></span><br><span class="line">    <span class="comment">// 这步特别关键，br x8这条指令不是PIC，通过这条指令（当前MMU已经打开）PC就开始使用虚拟地址空间了</span></span><br><span class="line">    ldr  x8, =__primary_switched</span><br><span class="line">    adrp x0, __PHYS_OFFSET</span><br><span class="line">    br   x8</span><br><span class="line">ENDPROC(__primary_switch)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Enable the MMU.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *  x0  = SCTLR_EL1 value for turning on the MMU.</span></span><br><span class="line"><span class="comment"> *  x1  = TTBR1_EL1 value</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Returns to the caller via x30/lr. This requires the caller to be covered</span></span><br><span class="line"><span class="comment"> * by the .idmap.text section.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Checks if the selected granule size is supported by the CPU.</span></span><br><span class="line"><span class="comment"> * If it isn&#x27;t, park the CPU</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">ENTRY(__enable_mmu)</span><br><span class="line">    mrs  x2, ID_AA64MMFR0_EL1</span><br><span class="line">    ubfx x2, x2, #ID_AA64MMFR0_TGRAN_SHIFT, <span class="number">4</span></span><br><span class="line">    cmp  x2, #ID_AA64MMFR0_TGRAN_SUPPORTED</span><br><span class="line">    b.ne __no_granule_support</span><br><span class="line">    update_early_cpu_boot_status <span class="number">0</span>, x2, x3</span><br><span class="line">    adrp x2, idmap_pg_dir</span><br><span class="line">    <span class="comment">// ------------------------------------------------------------------------------------------- (2)</span></span><br><span class="line">    <span class="comment">// x1 = init_pg_dir; x2 = idmap_pg_dir</span></span><br><span class="line">    <span class="comment">// 注意x2存入ttbr0_el1而x1存入ttbr1_el1</span></span><br><span class="line">    phys_to_ttbr x1, x1</span><br><span class="line">    phys_to_ttbr x2, x2</span><br><span class="line">    msr    		 ttbr0_el1, x2 <span class="comment">// load TTBR0</span></span><br><span class="line">    offset_ttbr1 x1</span><br><span class="line">    msr    		 ttbr1_el1, x1 <span class="comment">// load TTBR1</span></span><br><span class="line">    isb</span><br><span class="line">    msr    		 sctlr_el1, x0</span><br><span class="line">    isb</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Invalidate the local I-cache so that any instructions fetched</span></span><br><span class="line"><span class="comment">     * speculatively from the PoC are discarded, since they may have</span></span><br><span class="line"><span class="comment">     * been dynamically patched at the PoU.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ic   iallu</span><br><span class="line">    dsb  nsh</span><br><span class="line">    isb</span><br><span class="line">    ret</span><br><span class="line">ENDPROC(__enable_mmu)</span><br></pre></td></tr></table></figure>
+<p>(1) 参考注释<br>(2) <code>idmap_pg_dir</code>之所以放入<code>ttbr0_el1</code>，是因为当<code>MMU</code>开启后，PC使用的地址还和之前一样，都是<code>0x00XX</code>开头的地址。而这些地址都会去查看<code>ttbr0_el1</code>对应的页表，因此需要将 <code>idmap_pg_dir</code>放入</p>
+<p>至此，汇编代码部分基本结束，之后就会调用<code>start_kernel()</code>函数，进入C语言的世界了。</p>
+<h2 id="实验系统页表布局"><a href="#实验系统页表布局" class="headerlink" title="实验系统页表布局"></a>实验系统页表布局</h2><p>在整个Linux内核的学习过程中，我使用了《奔跑吧内核第二版》的实验平台，在该实验平台上，其页表布局如下：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 4级页表+4K的页面，VA_BITS = 48</span></span><br><span class="line"></span><br><span class="line">|<span class="number">63</span> --- <span class="number">48</span>|<span class="number">47</span> --- <span class="number">39</span>|<span class="number">38</span> --- <span class="number">30</span>|<span class="number">29</span> --- <span class="number">21</span>|<span class="number">20</span> --- <span class="number">12</span>|<span class="number">11</span> --- <span class="number">0</span>|</span><br><span class="line">|         |         |         |         |         |-- <span class="function">Page <span class="title">offset</span> <span class="params">(                                   = <span class="number">4</span>KB  )</span></span></span><br><span class="line">|         |         |         |         |------------ Level 3 PTE idx     (512 * 4KB                  = 2MB  )</span><br><span class="line">|         |         |         |---------------------- Level <span class="number">2</span> <span class="function">PMD <span class="title">idx</span>     <span class="params">(<span class="number">512</span> * <span class="number">512</span> * <span class="number">4</span>KB            = <span class="number">1</span>GB  )</span> </span></span><br><span class="line">|         |         |-------------------------------- Level 1 PUD idx     (512 * 512 * 512 * 4K       = 512GB)</span><br><span class="line">|         |------------------------------------------ Level <span class="number">0</span> <span class="function">PGD <span class="title">idx</span>     <span class="params">(<span class="number">512</span> * <span class="number">512</span> * <span class="number">512</span> * <span class="number">512</span> * <span class="number">4</span>K = <span class="number">256</span>TB)</span></span></span><br><span class="line">|-- 全1或0</span><br></pre></td></tr></table></figure>
+<h2 id="一个疑问"><a href="#一个疑问" class="headerlink" title="一个疑问"></a>一个疑问</h2><p>之前写完这篇笔记后，有一个问题一直没有想明白，</p>
+<blockquote>
+<p>在开启<code>MMU</code>之前，CPU是在<code>0x00XX</code>区域进行取指；而在开启<code>MMU</code>后，CPU是在<code>0xFFXX</code>区域进行取指。CPU到底是怎么做到这种切换的呢？<code>MMU</code>怎么会改变CPU发出的地址？它应该只能改变CPU发出地址的映射地址吧？</p>
+</blockquote>
+<p>这个疑问困扰了我很多天，翻阅了大量的资料后，我终于明白是怎么回事了。<br>这里要牵涉<code>PIC(Position Independent Code)</code>和非<code>PIC</code>汇编代码，在<code>heads.S</code>中，绝大多数代码都是<code>PIC</code>的，只有开启MMU后的一些代码是非<code>PIC</code>的。就是这些非<code>PIC</code>的代码，将<code>PC</code>的值从<code>0x00XX</code>切换到了<code>0xFFXX</code>，并且之后将一直运行在<code>0xFFXX</code>区域。</p>
+<p>比如说，<code>br</code>就是一个非<code>PIC</code>的指令，它最终在<code>MMU</code>开启后，将CPU的寻址空间切换到了<code>0xFFXX</code>区域（之前都在PC+/- 一定范围内寻指，并且PC也是在<code>0x00XX</code>区域）。关于<code>PIC</code>相关内容，请参考 <a target="_blank" rel="noopener" href="https://www.cnblogs.com/jianhua1992/p/16852795.html">linux内核链接脚本vmlinux.lds分析（十一）</a>。</p>
+<p><code>bl</code>和<code>adrp</code>都是<code>PIC</code>指令， <code>br</code>是非<code>PIC</code>指令。 <code>adrp</code>还比较特殊，它可以找到当前指令<code>+/- 4GB</code>空间的地址（因此可以处理64位的地址），并且其地址是<code>4KB</code>对齐的（也就是说低12位都是0）。<code>head.S</code>中页表使用的地址都满足这个要求，因此可以用<code>adrp</code>来进行相对地址跳转。</p>
+<h2 id="PIC指令"><a href="#PIC指令" class="headerlink" title="PIC指令"></a>PIC指令</h2><p>这里简单说说<code>PIC</code>指令是如何工作的，比如<code>bl disable_watchdog</code>这个指令，它其实是获取<code>disable_watchdog</code>地址后，取其最后几位偏移。因为<code>bl disable_watchdog</code>指令和<code>disable_watchdog</code>在同一个区域，因此通过最后这几位偏移就可以和当前<code>pc</code>算出它们的距离，通过这个距离，<code>pc</code>就会跳转到正确的地方。上个例子看看，</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 0x5fe000d8 - 0x5fe0008c = 0x4C</span></span><br><span class="line"><span class="comment">// PC + 0x8 + 0x44 就可以跳转到 disable_watchdog 了</span></span><br><span class="line"><span class="number">5f</span>e0008c:	eb000011 	bl	<span class="number">5f</span>e000d8 &lt;disable_watchdog&gt;</span><br><span class="line"><span class="number">5f</span>e00090:	e59ff2f8 	ldr	pc, [pc, #<span class="number">760</span>]	; <span class="number">5f</span>e00390 &lt;_mmu_table_base+<span class="number">0x4</span>&gt;</span><br><span class="line">...</span><br><span class="line"><span class="number">5f</span>e000d8 &lt;disable_watchdog&gt;:</span><br><span class="line"><span class="number">5f</span>e000d8:	e59f02b8 	ldr	r0, [pc, #<span class="number">696</span>]	; <span class="number">5f</span>e00398 &lt;_mmu_table_base+<span class="number">0xc</span>&gt;</span><br><span class="line"><span class="number">5f</span>e000dc:	e3a01000 	mov	r1, #<span class="number">0</span></span><br><span class="line"><span class="number">5f</span>e000e0:	e5801000 	str	r1, [r0]</span><br><span class="line"><span class="number">5f</span>e000e4:	e1a0f00e 	mov	pc, lr</span><br><span class="line">...</span><br><span class="line"><span class="number">5f</span>e0038c &lt;_mmu_table_base&gt;:</span><br><span class="line"><span class="number">5f</span>e0038c:	<span class="number">5f</span>e04000 	svcpl	<span class="number">0x00e04000</span></span><br><span class="line"><span class="number">5f</span>e00390:	<span class="number">5f</span>e000d8 	svcpl	<span class="number">0x00e000d8</span></span><br></pre></td></tr></table></figure>
+<p>从上面例子可以看出，如果要<code>bl</code>到一个很远的地方，那么CPU就会跳转到一个错误的地方，因为跳转地址的高位和PC的高位不同。根据最后几位偏移不能计算出正确的跳转地址。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><a target="_blank" rel="noopener" href="http://www.wowotech.net/armv8a_arch/create_page_tables.html">ARM64的启动过程之（二）：创建启动阶段的页表</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.wowotech.net/linux_kenrel/turn-on-mmu.html">ARM64的启动过程之（四）：打开MMU</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/LoyenWang/p/11406693.html">ARMv8 MMU及Linux页表映射</a></li>
+<li><a target="_blank" rel="noopener" href="http://gngshn.github.io/2017/11/30/arm64-linux%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%9005-%E9%85%8D%E7%BD%AE%E5%86%85%E6%A0%B8%E5%90%AF%E5%8A%A8%E7%9A%84%E4%B8%B4%E6%97%B6%E9%A1%B5%E8%A1%A8/">arm64_linux启动流程分析05_配置内核启动的临时页表</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/jianhua1992/p/16852795.html">linux内核链接脚本vmlinux.lds分析（十一）</a></li>
+<li><a target="_blank" rel="noopener" href="https://people.kernel.org/linusw/how-the-arm32-kernel-starts">How the ARM32 kernel starts</a></li>
+</ol>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href="/2023/01/15/FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/" title="FIXMAP和相关页表的创建">
+                    <div class="nextTitle">FIXMAP和相关页表的创建</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/" title="重新出发">
+                    <div class="prevTitle">重新出发</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:40vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%8A%E7%94%B5%E5%90%8E%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88"><span class="toc-number">1.</span> <span class="toc-text">上电后发生了什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Linux%E5%86%85%E6%A0%B8%E7%9A%84%E5%85%A5%E5%8F%A3%E7%A8%8B%E5%BA%8F"><span class="toc-number">2.</span> <span class="toc-text">Linux内核的入口程序</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA"><span class="toc-number">3.</span> <span class="toc-text">页表的创建</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#create-page-tables-Part-1"><span class="toc-number">3.1.</span> <span class="toc-text">__create_page_tables Part 1</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#create-page-tables-Part-2"><span class="toc-number">3.2.</span> <span class="toc-text">__create_page_tables Part 2</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E5%90%AFMMU"><span class="toc-number">4.</span> <span class="toc-text">开启MMU</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E9%AA%8C%E7%B3%BB%E7%BB%9F%E9%A1%B5%E8%A1%A8%E5%B8%83%E5%B1%80"><span class="toc-number">5.</span> <span class="toc-text">实验系统页表布局</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E7%96%91%E9%97%AE"><span class="toc-number">6.</span> <span class="toc-text">一个疑问</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#PIC%E6%8C%87%E4%BB%A4"><span class="toc-number">7.</span> <span class="toc-text">PIC指令</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">8.</span> <span class="toc-text">参考资料</span></a></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 5
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2023 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/02</span>
+            <a class="archive-post-title" href="/2023/02/02/%E3%80%90MEM04%E3%80%91memblock/">【MEM04】memblock</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/15</span>
+            <a class="archive-post-title" href="/2023/01/15/FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">FIXMAP和相关页表的创建</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/05</span>
+            <a class="archive-post-title" href="/2023/01/05/ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">ARMv8 MMU和Linux的启动</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/03</span>
+            <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/13</span>
+            <a class="archive-post-title" href="/2022/12/13/ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">ARMv8 MMU的基础知识</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="Linux内核">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内核
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux_5_0">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux_5_0
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ARMv8_64">
+                <span class="iconfont-archer">&#xe606;</span>
+                ARMv8_64
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux内存管理">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内存管理
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="硬核技术">
+            <span class="iconfont-archer">&#xe60a;</span>
+            硬核技术
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="个人随笔">
+            <span class="iconfont-archer">&#xe60a;</span>
+            个人随笔
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMetaRoot = "/"
+    if (siteMetaRoot === "undefined") {
+        siteMetaRoot = '/'
+    }
+    var siteMeta = {
+        url: "http://example.com",
+        root: siteMetaRoot,
+        author: "John Doe"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20211217"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20211217"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20211217" async></script>
+        
+        <!-- mermaid -->
+        
+    </body>
+</html>
