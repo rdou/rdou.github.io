@@ -426,22 +426,21 @@
         
         
             
+            
         
         <article class="index-post">
-            <a class="abstract-title" href="/2023/01/15/FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">
+            <a class="abstract-title" href="/2023/01/15/%E3%80%90LM03%E3%80%91FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">
                 
-                <span class="abstract-title-text">FIXMAP和相关页表的创建</span>
+                <span class="abstract-title-text">【LM03】FIXMAP和相关页表的创建</span>
             </a>
             <div class="abstract-content">
-                接上篇笔记，在上一篇笔记中，我们完成了最初的几个页表的创建，接下来就要开始start_kernel的工作了。到目前为止，内核还不知道硬件有多少内存空间，也不知道其它硬件的信息。Linux内核通过DTS文件来识别硬件并获取相关信息。这里有个重要的信息就是内存的大小。
-下面这个例子来自LoyenWang的博客
-12345// arch/arm64/boot/dts/freescale/fsl-l...
+                【Linux内存管理03】本文主要介绍虚拟内存中一个新的区域 - FIXMAP。FIXMAP用于映射设备树相关的信息，其中就包括物理内存的大小和起始地址。通过这篇文章，我们可以了解FIXMAP是如何进行映射以及设备树中的信息是如何被读取、使用的。
             </div>
             <!-- read more -->
             
             <div class="abstract-post-meta">
                 <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/10/15">
+                <div class="abstract-date" title="Last updated: 2023/10/17">
                     <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/01/15</span>
                 </div>
                 <!-- tags -->
@@ -484,9 +483,9 @@
             
         
         <article class="index-post">
-            <a class="abstract-title" href="/2023/01/05/ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">
+            <a class="abstract-title" href="/2023/01/05/%E3%80%90LM02%E3%80%91ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">
                 
-                <span class="abstract-title-text">ARMv8 MMU和Linux的启动</span>
+                <span class="abstract-title-text">【LM02】ARMv8 MMU和Linux的启动</span>
             </a>
             <div class="abstract-content">
                 【Linux内存管理02】本文主要介绍Linux内核启动过程中和MMU相关的内容，同时简单介绍下Linux的启动流程。
@@ -495,7 +494,7 @@
             
             <div class="abstract-post-meta">
                 <!-- date -->
-                <div class="abstract-date" title="Last updated: 2023/10/15">
+                <div class="abstract-date" title="Last updated: 2023/10/17">
                     <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2023/01/05</span>
                 </div>
                 <!-- tags -->
@@ -732,19 +731,19 @@
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/02</span>
-            <a class="archive-post-title" href="/2023/02/02/%E3%80%90MEM04%E3%80%91memblock/">【MEM04】memblock</a>
+            <a class="archive-post-title" href="/2023/02/02/%E3%80%90LM04%E3%80%91Memblock%E5%8F%8A%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">【LM04】Memblock及源码分析</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">01/15</span>
-            <a class="archive-post-title" href="/2023/01/15/FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">FIXMAP和相关页表的创建</a>
+            <a class="archive-post-title" href="/2023/01/15/%E3%80%90LM03%E3%80%91FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">【LM03】FIXMAP和相关页表的创建</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">01/05</span>
-            <a class="archive-post-title" href="/2023/01/05/ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">ARMv8 MMU和Linux的启动</a>
+            <a class="archive-post-title" href="/2023/01/05/%E3%80%90LM02%E3%80%91ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">【LM02】ARMv8 MMU和Linux的启动</a>
         </li>
     
         
@@ -765,7 +764,7 @@
         
         <li class="archive-post-item">
             <span class="archive-post-date">12/13</span>
-            <a class="archive-post-title" href="/2022/12/13/ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">ARMv8 MMU的基础知识</a>
+            <a class="archive-post-title" href="/2022/12/13/%E3%80%90LM01%E3%80%91ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">【LM01】ARMv8 MMU的基础知识</a>
         </li>
     
     </div>

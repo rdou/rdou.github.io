@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="在上一篇笔记中，我们已经看到了memblock的使用。memblock主要用在内核启动的早期，在伙伴系统启动前，内核使用memblock对物理内存进行管理。 memblock的结构体和初始化memblock的结构体很简单，代码中的注释写的也很详细，我就不多解释了。 1234567891011121314151617181920212223242526272829303132333435363738">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【LM04】Memblock及源码分析">
+<meta property="og:url" content="http://example.com/2023/02/02/%E3%80%90LM04%E3%80%91Memblock%E5%8F%8A%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在上一篇笔记中，我们已经看到了memblock的使用。memblock主要用在内核启动的早期，在伙伴系统启动前，内核使用memblock对物理内存进行管理。 memblock的结构体和初始化memblock的结构体很简单，代码中的注释写的也很详细，我就不多解释了。 1234567891011121314151617181920212223242526272829303132333435363738">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-02-03T06:28:23.000Z">
+<meta property="article:modified_time" content="2023-10-17T19:47:04.195Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Linux_5_0">
+<meta property="article:tag" content="ARMv8_64">
+<meta property="article:tag" content="Linux内存管理">
+<meta name="twitter:card" content="summary">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/touxiang.png">
+    
+    <title>【LM04】Memblock及源码分析 · 从零到负一</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20211217" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20211217" as="style">
+    <link rel="stylesheet" href="/css/dark.css">
+    <link rel="stylesheet" href="/css/mobile.css?v=20211217" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20211217" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20211217" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header header-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>从零到负一</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">从零到负一</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">【LM04】Memblock及源码分析</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:40vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+    
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg-linux.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                【LM04】Memblock及源码分析
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
+    
+</div>
+
+                
+                <!-- 文章字数统计 -->
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2023/02/02</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>在上一篇笔记中，我们已经看到了<code>memblock</code>的使用。<code>memblock</code>主要用在内核启动的早期，在伙伴系统启动前，内核使用<code>memblock</code>对<strong>物理内存</strong>进行管理。</p>
+<h2 id="memblock的结构体和初始化"><a href="#memblock的结构体和初始化" class="headerlink" title="memblock的结构体和初始化"></a>memblock的结构体和初始化</h2><p><code>memblock</code>的结构体很简单，代码中的注释写的也很详细，我就不多解释了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct memblock_region - represents a memory region</span></span><br><span class="line"><span class="comment"> * @base: physical address of the region</span></span><br><span class="line"><span class="comment"> * @size: size of the region</span></span><br><span class="line"><span class="comment"> * @flags: memory region attributes</span></span><br><span class="line"><span class="comment"> * @nid: NUMA node id</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> &#123;</span></span><br><span class="line">    <span class="keyword">phys_addr_t</span> base;</span><br><span class="line">    <span class="keyword">phys_addr_t</span> size;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">memblock_flags</span> <span class="title">flags</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_HAVE_MEMBLOCK_NODE_MAP</span></span><br><span class="line">    <span class="keyword">int</span> nid;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct memblock_type - collection of memory regions of certain type</span></span><br><span class="line"><span class="comment"> * @cnt: number of regions</span></span><br><span class="line"><span class="comment"> * @max: size of the allocated array</span></span><br><span class="line"><span class="comment"> * @total_size: size of all regions</span></span><br><span class="line"><span class="comment"> * @regions: array of regions</span></span><br><span class="line"><span class="comment"> * @name: the memory type symbolic name</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">memblock_type</span> &#123;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> cnt;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> max;</span><br><span class="line">    <span class="keyword">phys_addr_t</span> total_size;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> *<span class="title">regions</span>;</span></span><br><span class="line">    <span class="keyword">char</span> *name;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * struct memblock - memblock allocator metadata</span></span><br><span class="line"><span class="comment"> * @bottom_up: is bottom up direction?</span></span><br><span class="line"><span class="comment"> * @current_limit: physical address of the current allocation limit</span></span><br><span class="line"><span class="comment"> * @memory: usabe memory regions</span></span><br><span class="line"><span class="comment"> * @reserved: reserved memory regions</span></span><br><span class="line"><span class="comment"> * @physmem: all physical memory</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">memblock</span> &#123;</span></span><br><span class="line">    <span class="keyword">bool</span> bottom_up;  <span class="comment">/* is bottom up direction? */</span></span><br><span class="line">    <span class="keyword">phys_addr_t</span> current_limit;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_type</span> <span class="title">memory</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_type</span> <span class="title">reserved</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_HAVE_MEMBLOCK_PHYS_MAP</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_type</span> <span class="title">physmem</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>在Linux内核中，<code>memblock</code>通过静态分配，完成了最基本的初始化。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MEMBLOCK_ALLOC_ANYWHERE (~(phys_addr_t)0)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> INIT_MEMBLOCK_REGIONS 128</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> INIT_PHYSMEM_REGIONS  4</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> INIT_MEMBLOCK_RESERVED_REGIONS</span></span><br><span class="line">    <span class="meta">#<span class="meta-keyword">define</span> INIT_MEMBLOCK_RESERVED_REGIONS INIT_MEMBLOCK_REGIONS</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> <span class="title">memblock_memory_init_regions</span>[<span class="title">INIT_MEMBLOCK_REGIONS</span>] __<span class="title">initdata_memblock</span>;</span></span><br><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> <span class="title">memblock_reserved_init_regions</span>[<span class="title">INIT_MEMBLOCK_RESERVED_REGIONS</span>] __<span class="title">initdata_memblock</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_HAVE_MEMBLOCK_PHYS_MAP</span></span><br><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> <span class="title">memblock_physmem_init_regions</span>[<span class="title">INIT_PHYSMEM_REGIONS</span>] __<span class="title">initdata_memblock</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">memblock</span> <span class="title">memblock</span> __<span class="title">initdata_memblock</span> =</span> &#123;</span><br><span class="line">    .memory.regions        = memblock_memory_init_regions,</span><br><span class="line">    .memory.cnt          = <span class="number">1</span>, <span class="comment">/* empty dummy entry */</span></span><br><span class="line">    .memory.max          = INIT_MEMBLOCK_REGIONS,</span><br><span class="line">    .memory.name      = <span class="string">&quot;memory&quot;</span>,</span><br><span class="line"></span><br><span class="line">    .reserved.regions = memblock_reserved_init_regions,</span><br><span class="line">    .reserved.cnt      = <span class="number">1</span>, <span class="comment">/* empty dummy entry */</span></span><br><span class="line">    .reserved.max      = INIT_MEMBLOCK_RESERVED_REGIONS,</span><br><span class="line">    .reserved.name      = <span class="string">&quot;reserved&quot;</span>,</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_HAVE_MEMBLOCK_PHYS_MAP</span></span><br><span class="line">    .physmem.regions  = memblock_physmem_init_regions,</span><br><span class="line">    .physmem.cnt      = <span class="number">1</span>, <span class="comment">/* empty dummy entry */</span></span><br><span class="line">    .physmem.max      = INIT_PHYSMEM_REGIONS,</span><br><span class="line">    .physmem.name      = <span class="string">&quot;physmem&quot;</span>,</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    .bottom_up          = <span class="literal">false</span>,</span><br><span class="line">    .current_limit      = MEMBLOCK_ALLOC_ANYWHERE,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h2 id="memblock的基本操作"><a href="#memblock的基本操作" class="headerlink" title="memblock的基本操作"></a>memblock的基本操作</h2><h3 id="memblock-add"><a href="#memblock-add" class="headerlink" title="memblock_add()"></a>memblock_add()</h3><p>我们先来看<code>memblock</code>如何添加一段内存空间，这里使用的函数是<code>memblock_add()</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * memblock_add - add new memblock region</span></span><br><span class="line"><span class="comment"> * @base: base address of the new region</span></span><br><span class="line"><span class="comment"> * @size: size of the new region</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Add new memblock region [@base, @base + @size) to the &quot;memory&quot;</span></span><br><span class="line"><span class="comment"> * type. See memblock_add_range() description for mode details</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Return:</span></span><br><span class="line"><span class="comment"> * 0 on success, -errno on failure.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> __init_memblock <span class="title">memblock_add</span><span class="params">(<span class="keyword">phys_addr_t</span> base, <span class="keyword">phys_addr_t</span> size)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">phys_addr_t</span> end = base + size - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    memblock_dbg(<span class="string">&quot;memblock_add: [%pa-%pa] %pF\n&quot;</span>,</span><br><span class="line">             &amp;base, &amp;end, (<span class="keyword">void</span> *)_RET_IP_);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> memblock_add_range(&amp;memblock.memory, base, size, MAX_NUMNODES, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个函数只是一个封装函数，它最后会调用<code>memblock_add_range()</code>来完成内存空间的添加，<code>memblock_add_range()</code>这个函数一共被三个函数使用，分别是<code>memblock_add()</code>, <code>memblock_reserve()</code>和<code>memblock_add_node()</code>函数。下面我们就来看这个函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * memblock_add_range - add new memblock region</span></span><br><span class="line"><span class="comment"> * @type: memblock type to add new region into</span></span><br><span class="line"><span class="comment"> * @base: base address of the new region</span></span><br><span class="line"><span class="comment"> * @size: size of the new region</span></span><br><span class="line"><span class="comment"> * @nid: nid of the new region</span></span><br><span class="line"><span class="comment"> * @flags: flags of the new region</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Add new memblock region [@base, @base + @size) into @type.  The new region</span></span><br><span class="line"><span class="comment"> * is allowed to overlap with existing ones - overlaps don&#x27;t affect already</span></span><br><span class="line"><span class="comment"> * existing regions.  @type is guaranteed to be minimal (all neighbouring</span></span><br><span class="line"><span class="comment"> * compatible regions are merged) after the addition.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Return:</span></span><br><span class="line"><span class="comment"> * 0 on success, -errno on failure.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> __init_memblock <span class="title">memblock_add_range</span><span class="params">(struct memblock_type *type,</span></span></span><br><span class="line"><span class="function"><span class="params">                <span class="keyword">phys_addr_t</span> base, <span class="keyword">phys_addr_t</span> size,</span></span></span><br><span class="line"><span class="function"><span class="params">                <span class="keyword">int</span> nid, <span class="keyword">enum</span> memblock_flags flags)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">bool</span> insert = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">phys_addr_t</span> obase = base;</span><br><span class="line">    <span class="keyword">phys_addr_t</span> end = base + memblock_cap_size(base, &amp;size);</span><br><span class="line">    <span class="keyword">int</span> idx, nr_new;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> *<span class="title">rgn</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!size)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ------------------------------------------------------------------------------------ (1)</span></span><br><span class="line">    <span class="comment">// special case for empty array</span></span><br><span class="line">    <span class="keyword">if</span> (type-&gt;regions[<span class="number">0</span>].size == <span class="number">0</span>) &#123;</span><br><span class="line">        WARN_ON(type-&gt;cnt != <span class="number">1</span> || type-&gt;total_size);</span><br><span class="line">        type-&gt;regions[<span class="number">0</span>].base = base;</span><br><span class="line">        type-&gt;regions[<span class="number">0</span>].size = size;</span><br><span class="line">        type-&gt;regions[<span class="number">0</span>].flags = flags;</span><br><span class="line">        memblock_set_region_node(&amp;type-&gt;regions[<span class="number">0</span>], nid);</span><br><span class="line">        type-&gt;total_size = size;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">repeat:</span><br><span class="line">    <span class="comment">// ------------------------------------------------------------------------------------ (2)</span></span><br><span class="line">    <span class="comment">// 简单说下为什么这里要遍历两遍，因为每种type的memory regions都有一个最大容量max</span></span><br><span class="line">    <span class="comment">// 如果超过这个容量，我们就需要将struct memblock_region *regions双倍扩容</span></span><br><span class="line">    <span class="comment">// 如果没有超过，那么就不做特别处理</span></span><br><span class="line">    <span class="comment">// 这都是第一次遍历做的事情，第二次遍历才是真正的添加regions</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * The following is executed twice.  Once with %false @insert and</span></span><br><span class="line"><span class="comment">     * then with %true.  The first counts the number of regions needed</span></span><br><span class="line"><span class="comment">     * to accommodate the new area.  The second actually inserts them.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    base = obase;</span><br><span class="line">    nr_new = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    for_each_memblock_type(idx, type, rgn) &#123;</span><br><span class="line">        <span class="comment">// ------------------------------------------------------------------------------------ (3)</span></span><br><span class="line">        <span class="comment">// 这里面的逻辑我下面解释，需要画几幅图</span></span><br><span class="line">        <span class="keyword">phys_addr_t</span> rbase = rgn-&gt;base;</span><br><span class="line">        <span class="keyword">phys_addr_t</span> rend = rbase + rgn-&gt;size;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (rbase &gt;= end)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">if</span> (rend &lt;= base)</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * @rgn overlaps.  If it separates the lower part of new</span></span><br><span class="line"><span class="comment">         * area, insert that portion.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span> (rbase &gt; base) &#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_HAVE_MEMBLOCK_NODE_MAP</span></span><br><span class="line">            WARN_ON(nid != memblock_get_region_node(rgn));</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">            WARN_ON(flags != rgn-&gt;flags);</span><br><span class="line">            nr_new++;</span><br><span class="line">            <span class="keyword">if</span> (insert)</span><br><span class="line">                memblock_insert_region(type, idx++, base,</span><br><span class="line">                               rbase - base, nid,</span><br><span class="line">                               flags);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">/* area below @rend is dealt with, forget about it */</span></span><br><span class="line">        base = min(rend, end);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* insert the remaining portion */</span></span><br><span class="line">    <span class="keyword">if</span> (base &lt; end) &#123;</span><br><span class="line">        nr_new++;</span><br><span class="line">        <span class="keyword">if</span> (insert)</span><br><span class="line">            memblock_insert_region(type, idx, base, end - base,</span><br><span class="line">                           nid, flags);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!nr_new)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * If this was the first round, resize array and repeat for actual</span></span><br><span class="line"><span class="comment">     * insertions; otherwise, merge and return.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (!insert) &#123;</span><br><span class="line">        <span class="keyword">while</span> (type-&gt;cnt + nr_new &gt; type-&gt;max)</span><br><span class="line">            <span class="keyword">if</span> (memblock_double_array(type, obase, size) &lt; <span class="number">0</span>)</span><br><span class="line">                <span class="keyword">return</span> -ENOMEM;</span><br><span class="line">        insert = <span class="literal">true</span>;</span><br><span class="line">        <span class="keyword">goto</span> repeat;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        memblock_merge_regions(type);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面这段代码，理解注释的3点就够了，下面我画图来解释下(2)中的过程，这里我只分析两种简单的情况，其它情况分析方法都类似。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 第一种情况，插入到中间 </span></span><br><span class="line"><span class="comment">// 根据 if (rend &lt;= base) continue，不断寻找，直到找到一个rbase &gt;= end的region</span></span><br><span class="line"><span class="comment">// 在这里就是region1，直接跳出循环并添加即可 </span></span><br><span class="line">----- r1_end</span><br><span class="line">| <span class="number">1</span> |</span><br><span class="line">----- r1_base</span><br><span class="line">                ----- end</span><br><span class="line">                | X |</span><br><span class="line">                ----- base</span><br><span class="line"></span><br><span class="line">----- r0_end</span><br><span class="line">| <span class="number">0</span> |</span><br><span class="line">----- r0_base</span><br><span class="line"></span><br><span class="line"><span class="comment">// 第二种情况，有重叠，并且是下半部分重叠</span></span><br><span class="line"><span class="comment">// 循环一次后，插入部分的base调整为r0_end，然后将中间部分插入即可</span></span><br><span class="line">----- r1_end</span><br><span class="line">| <span class="number">1</span> |</span><br><span class="line">----- r1_base</span><br><span class="line">                ----- end</span><br><span class="line">                | X |</span><br><span class="line">                |   |</span><br><span class="line">                |   |</span><br><span class="line">----- r0_end    |   |</span><br><span class="line">| <span class="number">0</span> |           ----- base</span><br><span class="line">----- r0_base   </span><br><span class="line"></span><br><span class="line"><span class="comment">// 下面还有几种情况就比较好分析了，我只列出情况，不画图分析了</span></span><br><span class="line"><span class="comment">// 第三种情况，有重叠，并且是上半部分重叠</span></span><br><span class="line"><span class="comment">// 第四种情况，有重叠，并且上下部分都重叠</span></span><br><span class="line"><span class="comment">// 第五种情况，有重叠，并且跨过多个region（这种情况其实也可以分好几种，但分析过程都一样）</span></span><br></pre></td></tr></table></figure>
+<h4 id="memblock-insert-region"><a href="#memblock-insert-region" class="headerlink" title="memblock_insert_region()"></a>memblock_insert_region()</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * memblock_insert_region - insert new memblock region</span></span><br><span class="line"><span class="comment"> * @type:    memblock type to insert into</span></span><br><span class="line"><span class="comment"> * @idx:    index for the insertion point</span></span><br><span class="line"><span class="comment"> * @base:    base address of the new region</span></span><br><span class="line"><span class="comment"> * @size:    size of the new region</span></span><br><span class="line"><span class="comment"> * @nid:    node id of the new region</span></span><br><span class="line"><span class="comment"> * @flags:    flags of the new region</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Insert new memblock region [@base, @base + @size) into @type at @idx.</span></span><br><span class="line"><span class="comment"> * @type must already have extra room to accommodate the new region.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> __init_memblock <span class="title">memblock_insert_region</span><span class="params">(struct memblock_type *type,</span></span></span><br><span class="line"><span class="function"><span class="params">                           <span class="keyword">int</span> idx, <span class="keyword">phys_addr_t</span> base,</span></span></span><br><span class="line"><span class="function"><span class="params">                           <span class="keyword">phys_addr_t</span> size,</span></span></span><br><span class="line"><span class="function"><span class="params">                           <span class="keyword">int</span> nid,</span></span></span><br><span class="line"><span class="function"><span class="params">                           <span class="keyword">enum</span> memblock_flags flags)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> *<span class="title">rgn</span> =</span> &amp;type-&gt;regions[idx];</span><br><span class="line"></span><br><span class="line">    BUG_ON(type-&gt;cnt &gt;= type-&gt;max);</span><br><span class="line">    <span class="comment">// ------------------------------------------------------------- (1)</span></span><br><span class="line">    <span class="comment">// 将从rgn开始到最后一个有效region的所有regions后移一位（这也是为什么需要先判断是否</span></span><br><span class="line">    <span class="comment">// 需要扩容再添加region）    </span></span><br><span class="line">    memmove(rgn + <span class="number">1</span>, rgn, (type-&gt;cnt - idx) * <span class="keyword">sizeof</span>(*rgn));</span><br><span class="line">    rgn-&gt;base = base;</span><br><span class="line">    rgn-&gt;size = size;</span><br><span class="line">    rgn-&gt;flags = flags;</span><br><span class="line">    memblock_set_region_node(rgn, nid);</span><br><span class="line">    type-&gt;cnt++;</span><br><span class="line">    type-&gt;total_size += size;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="memblock-merge-regions"><a href="#memblock-merge-regions" class="headerlink" title="memblock_merge_regions()"></a>memblock_merge_regions()</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * memblock_merge_regions - merge neighboring compatible regions</span></span><br><span class="line"><span class="comment"> * @type: memblock type to scan</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Scan @type and merge neighboring compatible regions.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> __init_memblock <span class="title">memblock_merge_regions</span><span class="params">(struct memblock_type *type)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* cnt never goes below 1 */</span></span><br><span class="line">    <span class="keyword">while</span> (i &lt; type-&gt;cnt - <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> *<span class="title">this</span> =</span> &amp;type-&gt;regions[i];</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">memblock_region</span> *<span class="title">next</span> =</span> &amp;type-&gt;regions[i + <span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span>-&gt;base + <span class="keyword">this</span>-&gt;size != next-&gt;base ||</span><br><span class="line">            memblock_get_region_node(<span class="keyword">this</span>) !=</span><br><span class="line">            memblock_get_region_node(next) ||</span><br><span class="line">            <span class="keyword">this</span>-&gt;flags != next-&gt;flags) &#123;</span><br><span class="line">            BUG_ON(<span class="keyword">this</span>-&gt;base + <span class="keyword">this</span>-&gt;size &gt; next-&gt;base);</span><br><span class="line">            i++;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">this</span>-&gt;size += next-&gt;size;</span><br><span class="line">        <span class="comment">/* move forward from next + 1, index of which is i + 2 */</span></span><br><span class="line">        memmove(next, next + <span class="number">1</span>, (type-&gt;cnt - (i + <span class="number">2</span>)) * <span class="keyword">sizeof</span>(*next));</span><br><span class="line">        type-&gt;cnt--;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面这两个函数都很容易理解，但这里其实就可以看出，<code>memblock</code>速度应该不快，每次添加一个<code>region</code>都需要完全遍历一遍，并且需要移动很多<code>regions</code>。因此，<code>memblock</code>不适合用于大内存的管理。在启动后，内核会从<code>memblock</code>切换成伙伴系统和<code>slab</code>系统。</p>
+<h3 id="memblock-remove"><a href="#memblock-remove" class="headerlink" title="memblock_remove()"></a>memblock_remove()</h3><p>前面分析了<code>region</code>的添加，现在来分析下<code>region</code>的移除。这部分我就不仔细分析了，大体和上面的相似，注意<code>memblock_isolate_range()</code>函数的使用。我们先来看<code>memblock_remove()</code>这个函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> __init_memblock <span class="title">memblock_remove</span><span class="params">(<span class="keyword">phys_addr_t</span> base, <span class="keyword">phys_addr_t</span> size)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">phys_addr_t</span> end = base + size - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">	memblock_dbg(<span class="string">&quot;memblock_remove: [%pa-%pa] %pS\n&quot;</span>,</span><br><span class="line">		     &amp;base, &amp;end, (<span class="keyword">void</span> *)_RET_IP_);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> memblock_remove_range(&amp;memblock.memory, base, size);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个函数也是一个封装函数而已，它通过调用<code>memblock_remove_range()</code>来完成<code>region</code>的移除。</p>
+<h4 id="memblock-remove-range"><a href="#memblock-remove-range" class="headerlink" title="memblock_remove_range()"></a>memblock_remove_range()</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> __init_memblock <span class="title">memblock_remove_range</span><span class="params">(struct memblock_type *type,</span></span></span><br><span class="line"><span class="function"><span class="params">					  <span class="keyword">phys_addr_t</span> base, <span class="keyword">phys_addr_t</span> size)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> start_rgn, end_rgn;</span><br><span class="line">	<span class="keyword">int</span> i, ret;</span><br><span class="line">	<span class="comment">// -------------------------------------------------------------------------- (1)</span></span><br><span class="line">	<span class="comment">// 这是个关键函数，它用于分离出需要移除的区域。这个函数我就不分析了，</span></span><br><span class="line">	<span class="comment">// 直接参考大神文章配图 - https://www.cnblogs.com/LoyenWang/p/11440957.html</span></span><br><span class="line">	ret = memblock_isolate_range(type, base, size, &amp;start_rgn, &amp;end_rgn);</span><br><span class="line">	<span class="keyword">if</span> (ret)</span><br><span class="line">		<span class="keyword">return</span> ret;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (i = end_rgn - <span class="number">1</span>; i &gt;= start_rgn; i--)</span><br><span class="line">		memblock_remove_region(type, i);</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="memblock-remove-region"><a href="#memblock-remove-region" class="headerlink" title="memblock_remove_region()"></a>memblock_remove_region()</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> __init_memblock <span class="title">memblock_remove_region</span><span class="params">(struct memblock_type *type, <span class="keyword">unsigned</span> <span class="keyword">long</span> r)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	type-&gt;total_size -= type-&gt;regions[r].size;</span><br><span class="line">	memmove(&amp;type-&gt;regions[r], &amp;type-&gt;regions[r + <span class="number">1</span>],</span><br><span class="line">		(type-&gt;cnt - (r + <span class="number">1</span>)) * <span class="keyword">sizeof</span>(type-&gt;regions[r]));</span><br><span class="line">	type-&gt;cnt--;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Special case for empty arrays */</span></span><br><span class="line">	<span class="keyword">if</span> (type-&gt;cnt == <span class="number">0</span>) &#123;</span><br><span class="line">		WARN_ON(type-&gt;total_size != <span class="number">0</span>);</span><br><span class="line">		type-&gt;cnt = <span class="number">1</span>;</span><br><span class="line">		type-&gt;regions[<span class="number">0</span>].base = <span class="number">0</span>;</span><br><span class="line">		type-&gt;regions[<span class="number">0</span>].size = <span class="number">0</span>;</span><br><span class="line">		type-&gt;regions[<span class="number">0</span>].flags = <span class="number">0</span>;</span><br><span class="line">		memblock_set_region_node(&amp;type-&gt;regions[<span class="number">0</span>], MAX_NUMNODES);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2023/01/15/%E3%80%90LM03%E3%80%91FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/" title="【LM03】FIXMAP和相关页表的创建">
+                    <div class="prevTitle">【LM03】FIXMAP和相关页表的创建</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:40vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#memblock%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93%E5%92%8C%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">1.</span> <span class="toc-text">memblock的结构体和初始化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#memblock%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C"><span class="toc-number">2.</span> <span class="toc-text">memblock的基本操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#memblock-add"><span class="toc-number">2.1.</span> <span class="toc-text">memblock_add()</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#memblock-insert-region"><span class="toc-number">2.1.1.</span> <span class="toc-text">memblock_insert_region()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#memblock-merge-regions"><span class="toc-number">2.1.2.</span> <span class="toc-text">memblock_merge_regions()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#memblock-remove"><span class="toc-number">2.2.</span> <span class="toc-text">memblock_remove()</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#memblock-remove-range"><span class="toc-number">2.2.1.</span> <span class="toc-text">memblock_remove_range()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#memblock-remove-region"><span class="toc-number">2.2.2.</span> <span class="toc-text">memblock_remove_region()</span></a></li></ol></li></ol></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 5
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2023 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/02</span>
+            <a class="archive-post-title" href="/2023/02/02/%E3%80%90LM04%E3%80%91Memblock%E5%8F%8A%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">【LM04】Memblock及源码分析</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/15</span>
+            <a class="archive-post-title" href="/2023/01/15/%E3%80%90LM03%E3%80%91FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">【LM03】FIXMAP和相关页表的创建</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/05</span>
+            <a class="archive-post-title" href="/2023/01/05/%E3%80%90LM02%E3%80%91ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">【LM02】ARMv8 MMU和Linux的启动</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/03</span>
+            <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/13</span>
+            <a class="archive-post-title" href="/2022/12/13/%E3%80%90LM01%E3%80%91ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">【LM01】ARMv8 MMU的基础知识</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="Linux内核">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内核
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux_5_0">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux_5_0
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ARMv8_64">
+                <span class="iconfont-archer">&#xe606;</span>
+                ARMv8_64
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux内存管理">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内存管理
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="硬核技术">
+            <span class="iconfont-archer">&#xe60a;</span>
+            硬核技术
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="个人随笔">
+            <span class="iconfont-archer">&#xe60a;</span>
+            个人随笔
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMetaRoot = "/"
+    if (siteMetaRoot === "undefined") {
+        siteMetaRoot = '/'
+    }
+    var siteMeta = {
+        url: "http://example.com",
+        root: siteMetaRoot,
+        author: "John Doe"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20211217"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20211217"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20211217" async></script>
+        
+        <!-- mermaid -->
+        
+    </body>
+</html>
