@@ -34,7 +34,7 @@
 <meta property="og:image" content="https://i.imgur.com/7NCyL42.png">
 <meta property="og:image" content="https://i.imgur.com/zNdm0rR.png">
 <meta property="article:published_time" content="2022-12-13T18:36:04.000Z">
-<meta property="article:modified_time" content="2023-10-17T19:44:23.904Z">
+<meta property="article:modified_time" content="2023-10-19T07:00:20.070Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Linux内核">
 <meta property="article:tag" content="Linux_5_0">
@@ -526,7 +526,7 @@
 <li><code>ARM Cortex-A Series Programmer&#39;s Guide for ARMv8-A</code></li>
 </ol>
 <p><code>Armv8-A Address Translation</code>中的内容都来自于<code>ARM Cortex-A Series Programmer&#39;s Guide for ARMv8-A</code>，但它把后者不同章节的相关内容放在了一起，因此免去了查找不同章节内容的痛苦。相比于后者，我会更多地使用前者中的内容。注意，ARMv8有多个Exception/Excution/Security Level，但这篇笔记只关注<code>NS + EL1 + AArch64</code>的组合。</p>
-<h2 id="MMU的基本功能"><a href="#MMU的基本功能" class="headerlink" title="MMU的基本功能"></a>MMU的基本功能</h2><p>MMU的功能就是实现<code>VA-&gt;PA</code>的地址转换，我们会创建一系列的映射表来实现这个功能。至于为什么要用虚拟地址我就不解释了，网上随便搜搜就能找到一大堆的资料。 下图显示了从CPU开始，虚拟地址是如何进行转换并被使用的，这里除了涉及MMU外，还有TLB以及各级的Cache。TLB也是一种特殊的Cache，我就不在这里多介绍了，以后专门开个系列介绍Cache吧。</p>
+<h2 id="MMU的基本功能"><a href="#MMU的基本功能" class="headerlink" title="MMU的基本功能"></a>MMU的基本功能</h2><p>MMU的功能就是实现<code>VA-&gt;PA</code>的地址转换，我们会创建一系列的映射表来实现这个功能。至于为什么要用虚拟地址我就不解释了，网上随便搜搜就能找到一大堆的资料。下图显示了从CPU开始，虚拟地址是如何进行转换并被使用的，这里除了涉及MMU外，还有TLB以及各级的Cache。TLB也是一种特殊的Cache，我就不在这里多介绍了，以后专门开个系列介绍Cache吧。</p>
 <p><img src="https://i.imgur.com/f49He40l.jpg" alt="MMU AT"></p>
 <p>上图显示的是<code>VA-&gt;PA</code>在架构层面如何实现的，下图显示的是地址空间如何进行<code>VA-&gt;PA</code>的转换。我们可以看出，不同区域的虚拟地址可以映射到同一区域的物理空间，同一区域的虚拟地址也可以映射到不同区域的物理空间。</p>
 <p><img src="https://i.imgur.com/PwxzSdO.jpg" alt="MMU VA_2_PA"></p>
@@ -753,16 +753,6 @@
         
         
     
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         
         
