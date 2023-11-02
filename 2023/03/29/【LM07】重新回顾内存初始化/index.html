@@ -28,7 +28,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://i.imgur.com/gIaZjiF.png">
 <meta property="article:published_time" content="2023-03-29T18:11:18.000Z">
-<meta property="article:modified_time" content="2023-10-31T17:52:22.938Z">
+<meta property="article:modified_time" content="2023-11-01T07:09:41.524Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Linux内核">
 <meta property="article:tag" content="Linux_5_0">
@@ -515,7 +515,7 @@
                 <main class="main post-page">
     <article class="article-entry">
         <h2 id="start-kernel"><a href="#start-kernel" class="headerlink" title="start_kernel()"></a>start_kernel()</h2><p>这个函数的内容特别丰富，要全面地分析是不可能的。我目前准备分析到<code>mm_init()</code>函数，如果之后的函数也牵涉内存管理的初始化且内容很重要，我也会考虑将其添加进来。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">start_kernel()</span><br><span class="line">  |</span><br><span class="line">  +----&gt; smp_setup_processor_id() <span class="comment">// 获取当前正在执行初始化的core_id</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; boot_cpu_init()          <span class="comment">// 设置开启CPU的数量和开启CPU的core_id</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; page_address_init()      <span class="comment">// 这是一个空函数</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; setup_arch()             <span class="comment">// 这个函数在之前几篇笔记中已经做了详细的分析</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; setup_nr_cpu_ids()       <span class="comment">// 获取系统中最大的core_id</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; setup_per_cpu_areas()    <span class="comment">// 对每一个CPU设置相应的内存空间，参考https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; smp_prepare_boot_cpu()   <span class="comment">// 对boot core进行一些设置</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; boot_cpu_hotplug_init()  <span class="comment">// 对boot core的hot-plug进行初始化</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; build_all_zonelists()    <span class="comment">// 创建并初始化zonelists</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; page_alloc_init()        <span class="comment">// 向cpuhp的CPUHP_PAGE_ALLOC_DEAD状态中插入一个回调函数 - page_alloc_cpu_dead</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; mm_init()                <span class="comment">// 建立新的内存分配器并开始停用memblock</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">start_kernel()</span><br><span class="line">  |</span><br><span class="line">  +----&gt; smp_setup_processor_id() <span class="comment">// 获取当前正在执行初始化的core_id</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; boot_cpu_init()          <span class="comment">// 设置开启CPU的数量和开启CPU的core_id</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; page_address_init()      <span class="comment">// 这是一个空函数</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; setup_arch()             <span class="comment">// 这个函数在之前几篇笔记中已经做了详细的分析</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; setup_nr_cpu_ids()       <span class="comment">// 获取系统中最大的core_id</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; setup_per_cpu_areas()    <span class="comment">// 对每一个CPU设置相应的内存空间，见参考资料1</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; smp_prepare_boot_cpu()   <span class="comment">// 对boot core进行一些设置</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; boot_cpu_hotplug_init()  <span class="comment">// 对boot core的hot-plug进行初始化</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; build_all_zonelists()    <span class="comment">// 创建并初始化zonelists</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; page_alloc_init()        <span class="comment">// 向cpuhp的CPUHP_PAGE_ALLOC_DEAD状态中插入一个回调函数 - page_alloc_cpu_dead</span></span><br><span class="line">  |</span><br><span class="line">  +----&gt; mm_init()                <span class="comment">// 建立新的内存分配器并开始停用memblock</span></span><br></pre></td></tr></table></figure>
 <p>在上面的函数中，最重要的是<code>setup_arch()</code>和<code>mm_init()</code>，至于其它的，我还会介绍<code>build_all_zonelists()</code>函数。在正式进入这些函数前，我们先来看看一个知识点 - <code>Node</code>, <code>Zone</code>和<code>Page</code>。</p>
 <h2 id="Node-Zone-Page"><a href="#Node-Zone-Page" class="headerlink" title="Node, Zone, Page"></a>Node, Zone, Page</h2><p>Linux在管理内存时，人为地引入了<code>Node</code>, <code>Zone</code>和<code>Page</code>的概念，除此之外，还引入了<code>NUMA</code>和<code>UMA</code>两种架构。我这里就不介绍这些基本知识了，直接上网上资料。<br><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/595356681">深入理解 Linux 物理内存分配全链路实现</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/LoyenWang/p/11568481.html">【原创】（五）Linux内存管理zone_sizes_init</a></p>
 <p>下图是我的模拟系统中<code>Node</code>, <code>Zone</code>等的情况。可以看出，我的系统是<code>UMA</code>且只有一个<code>Faking Node</code>，和一个<code>Zone</code>。所有的1GB内存空间都在<code>DMA32</code>的<code>Zone</code>。<code>DMA32</code>的<code>Zone</code>支持4GB的内存空间，只要内存不够4GB都只用一个<code>Zone</code>。<code>DMA32</code>的存在主要是为了兼容32位以下的系统，它们只能访问4GB以下的内存空间，因此需要设置一个专门的<code>Zone</code>。</p>
@@ -541,12 +541,17 @@
     <ul class="post-paginator">
         <li class="next">
             
+                <div class="nextSlogan">Next Post</div>
+                <a href="/2023/04/10/%E3%80%90LM08%E3%80%91Node%E5%92%8CZone%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/" title="【LM08】Node和Zone的初始化">
+                    <div class="nextTitle">【LM08】Node和Zone的初始化</div>
+                </a>
+            
         </li>
         <li class="previous">
             
                 <div class="prevSlogan">Previous Post</div>
-                <a href="/2023/03/12/%E3%80%90LM06%E3%80%91bootmem-init%E5%92%8CLinux%E7%9A%84%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/" title="【LM06】bootmem_init和Linux的物理内存模型">
-                    <div class="prevTitle">【LM06】bootmem_init和Linux的物理内存模型</div>
+                <a href="/2023/03/12/%E3%80%90LM06%E3%80%91bootmem-init()%E5%92%8CLinux%E7%9A%84%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/" title="【LM06】bootmem_init()和Linux的物理内存模型">
+                    <div class="prevTitle">【LM06】bootmem_init()和Linux的物理内存模型</div>
                 </a>
             
         </li>
@@ -725,7 +730,16 @@
         
         
         
+        
+        
+        
+        
+        
     
+        
+        
+        
+        
         
         
         
@@ -766,7 +780,7 @@
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 8
+        Total : 9
         </div>
         <!-- search  -->
         
@@ -782,6 +796,12 @@
             
         
         <li class="archive-post-item">
+            <span class="archive-post-date">04/10</span>
+            <a class="archive-post-title" href="/2023/04/10/%E3%80%90LM08%E3%80%91Node%E5%92%8CZone%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">【LM08】Node和Zone的初始化</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
             <span class="archive-post-date">03/29</span>
             <a class="archive-post-title" href="/2023/03/29/%E3%80%90LM07%E3%80%91%E9%87%8D%E6%96%B0%E5%9B%9E%E9%A1%BE%E5%86%85%E5%AD%98%E5%88%9D%E5%A7%8B%E5%8C%96/">【LM07】重新回顾内存初始化</a>
         </li>
@@ -789,13 +809,13 @@
         
         <li class="archive-post-item">
             <span class="archive-post-date">03/12</span>
-            <a class="archive-post-title" href="/2023/03/12/%E3%80%90LM06%E3%80%91bootmem-init%E5%92%8CLinux%E7%9A%84%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">【LM06】bootmem_init和Linux的物理内存模型</a>
+            <a class="archive-post-title" href="/2023/03/12/%E3%80%90LM06%E3%80%91bootmem-init()%E5%92%8CLinux%E7%9A%84%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">【LM06】bootmem_init()和Linux的物理内存模型</a>
         </li>
     
         
         <li class="archive-post-item">
             <span class="archive-post-date">02/12</span>
-            <a class="archive-post-title" href="/2023/02/12/%E3%80%90LM05%E3%80%91paging-init-%E4%BB%A5%E5%8F%8A%E5%86%85%E5%AD%98%E7%9A%84%E5%B8%83%E5%B1%80/">【LM05】paging_init()以及内存的布局</a>
+            <a class="archive-post-title" href="/2023/02/12/%E3%80%90LM05%E3%80%91paging-init()%E4%BB%A5%E5%8F%8A%E5%86%85%E5%AD%98%E7%9A%84%E5%B8%83%E5%B1%80/">【LM05】paging_init()以及内存的布局</a>
         </li>
     
         
