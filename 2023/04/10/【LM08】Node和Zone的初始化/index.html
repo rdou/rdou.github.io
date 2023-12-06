@@ -27,7 +27,7 @@
 <meta property="og:description" content="在之前的笔记【LM06】bootmem_init()和Linux的物理内存模型中，我已经分析了bootmem_init()中大部分的内容。剩下的内容就是对Node以及Zone等进行初始化。在上一篇笔记【LM07】重新回顾内存初始化中，我介绍了Node和Zone及其结构体，我们现在来看看如何对它们进行初始化。 zone_sizes_init()我们继续回到bootmem_init()函数，这里我们直">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-04-10T07:26:42.000Z">
-<meta property="article:modified_time" content="2023-11-02T17:28:33.079Z">
+<meta property="article:modified_time" content="2023-11-15T06:48:48.167Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="Linux内核">
 <meta property="article:tag" content="Linux_5_0">
@@ -520,7 +520,7 @@
 <p>(1) 通过遍历<code>memblock.memory</code>中的<code>region</code>来确定<code>zhole_size[ZONE_NORMAL]</code>的大小；<br>(2) 初始化<code>Node</code>以及<code>free_area</code>，具体代码分析如下。</p>
 <h2 id="free-area-init-node"><a href="#free-area-init-node" class="headerlink" title="free_area_init_node()"></a>free_area_init_node()</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> __init <span class="title">free_area_init_node</span><span class="params">(<span class="keyword">int</span> nid, <span class="keyword">unsigned</span> <span class="keyword">long</span> *zones_size,</span></span></span><br><span class="line"><span class="function"><span class="params">                   <span class="keyword">unsigned</span> <span class="keyword">long</span> node_start_pfn,</span></span></span><br><span class="line"><span class="function"><span class="params">                   <span class="keyword">unsigned</span> <span class="keyword">long</span> *zholes_size)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// ------------------------------------------------------ (1)</span></span><br><span class="line">    <span class="comment">// #define NODE_DATA(nid)    (&amp;contig_page_data)</span></span><br><span class="line">    <span class="keyword">pg_data_t</span> *pgdat = NODE_DATA(nid);</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> start_pfn = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> end_pfn = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* pg_data_t should be reset to zero when it&#x27;s allocated */</span></span><br><span class="line">    WARN_ON(pgdat-&gt;nr_zones || pgdat-&gt;kswapd_classzone_idx);</span><br><span class="line"></span><br><span class="line">    pgdat-&gt;node_id = nid; <span class="comment">// nid = 0</span></span><br><span class="line">    pgdat-&gt;node_start_pfn = node_start_pfn; <span class="comment">// node_start_pfn = min = 所有memblock.memory中第一个PFN</span></span><br><span class="line">    pgdat-&gt;per_cpu_nodestats = <span class="literal">NULL</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_HAVE_MEMBLOCK_NODE_MAP</span></span><br><span class="line">    get_pfn_range_for_nid(nid, &amp;start_pfn, &amp;end_pfn);</span><br><span class="line">    pr_info(<span class="string">&quot;Initmem setup node %d [mem %#018Lx-%#018Lx]\n&quot;</span>, nid,</span><br><span class="line">        (u64)start_pfn &lt;&lt; PAGE_SHIFT,</span><br><span class="line">        end_pfn ? ((u64)end_pfn &lt;&lt; PAGE_SHIFT) - <span class="number">1</span> : <span class="number">0</span>);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    start_pfn = node_start_pfn;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="comment">// ------------------------------------------------------ (2)</span></span><br><span class="line">    calculate_node_totalpages(pgdat, start_pfn, end_pfn, zones_size, zholes_size);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// in sparsemem mode, this function is &#123;&#125;    </span></span><br><span class="line">    alloc_node_mem_map(pgdat);</span><br><span class="line">    <span class="comment">// this function is &#123;&#125;</span></span><br><span class="line">    pgdat_set_deferred_range(pgdat);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// ------------------------------------------------------ (3)</span></span><br><span class="line">    free_area_init_core(pgdat);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>(1) 在<code>UMA</code>架构下只有一个<code>Node</code>，该<code>Node</code>是静态分配的<code>contig_page_data</code>；<br>(2) 计算<code>Node</code>中所有以及实际出现的物理页；<br>(3) 初始化<code>Node</code>的核心函数。<br>下面分别看看(2)和(3)中牵涉的函数。</p>
-<h3 id="calculate-node-totalpages"><a href="#calculate-node-totalpages" class="headerlink" title="calculate_node_totalpages()"></a>calculate_node_totalpages()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> __init <span class="title">calculate_node_totalpages</span><span class="params">(struct pglist_data *pgdat,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> node_start_pfn,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> node_end_pfn,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> *zones_size,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> *zholes_size)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> realtotalpages = <span class="number">0</span>, totalpages = <span class="number">0</span>;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">zone_type</span> <span class="title">i</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; MAX_NR_ZONES; i++) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span> =</span> pgdat-&gt;node_zones + i;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">long</span> zone_start_pfn, zone_end_pfn;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">long</span> size, real_size;</span><br><span class="line">                </span><br><span class="line">        <span class="comment">// --------------------------------------------------------------- (1)</span></span><br><span class="line">        size = zone_spanned_pages_in_node(pgdat-&gt;node_id, i, node_start_pfn, node_end_pfn,</span><br><span class="line">                                                        &amp;zone_start_pfn, &amp;zone_end_pfn, zones_size);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// --------------------------------------------------------------- (2)</span></span><br><span class="line">        real_size = size - zone_absent_pages_in_node(pgdat-&gt;node_id, i, node_start_pfn, node_end_pfn, zholes_size);</span><br><span class="line">        <span class="keyword">if</span> (size)</span><br><span class="line">            zone-&gt;zone_start_pfn = zone_start_pfn;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            zone-&gt;zone_start_pfn = <span class="number">0</span>;</span><br><span class="line">        zone-&gt;spanned_pages = size;</span><br><span class="line">        zone-&gt;present_pages = real_size;</span><br><span class="line"></span><br><span class="line">        totalpages += size;</span><br><span class="line">        realtotalpages += real_size;</span><br><span class="line">    &#125;</span><br><span class="line">        </span><br><span class="line">    <span class="comment">// --------------------------------------------------------------- (3)</span></span><br><span class="line">    pgdat-&gt;node_spanned_pages = totalpages;</span><br><span class="line">    pgdat-&gt;node_present_pages = realtotalpages;</span><br><span class="line">    printk(KERN_DEBUG <span class="string">&quot;On node %d totalpages: %lu\n&quot;</span>, pgdat-&gt;node_id, realtotalpages);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="calculate-node-totalpages"><a href="#calculate-node-totalpages" class="headerlink" title="calculate_node_totalpages()"></a>calculate_node_totalpages()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> __init <span class="title">calculate_node_totalpages</span><span class="params">(struct pglist_data *pgdat,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> node_start_pfn,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> node_end_pfn,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> *zones_size,</span></span></span><br><span class="line"><span class="function"><span class="params">                                                                 <span class="keyword">unsigned</span> <span class="keyword">long</span> *zholes_size)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> realtotalpages = <span class="number">0</span>, totalpages = <span class="number">0</span>;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">zone_type</span> <span class="title">i</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; MAX_NR_ZONES; i++) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span> =</span> pgdat-&gt;node_zones + i;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">long</span> zone_start_pfn, zone_end_pfn;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">long</span> size, real_size;</span><br><span class="line">                </span><br><span class="line">        <span class="comment">// --------------------------------------------------------------- (1)</span></span><br><span class="line">        size = zone_spanned_pages_in_node(pgdat-&gt;node_id, i, node_start_pfn, node_end_pfn,</span><br><span class="line">                                          &amp;zone_start_pfn, &amp;zone_end_pfn, zones_size);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// --------------------------------------------------------------- (2)</span></span><br><span class="line">        real_size = size - zone_absent_pages_in_node(pgdat-&gt;node_id, i, node_start_pfn, node_end_pfn, zholes_size);</span><br><span class="line">        <span class="keyword">if</span> (size)</span><br><span class="line">            zone-&gt;zone_start_pfn = zone_start_pfn;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            zone-&gt;zone_start_pfn = <span class="number">0</span>;</span><br><span class="line">        zone-&gt;spanned_pages = size;</span><br><span class="line">        zone-&gt;present_pages = real_size;</span><br><span class="line"></span><br><span class="line">        totalpages += size;</span><br><span class="line">        realtotalpages += real_size;</span><br><span class="line">    &#125;</span><br><span class="line">        </span><br><span class="line">    <span class="comment">// --------------------------------------------------------------- (3)</span></span><br><span class="line">    pgdat-&gt;node_spanned_pages = totalpages;</span><br><span class="line">    pgdat-&gt;node_present_pages = realtotalpages;</span><br><span class="line">    printk(KERN_DEBUG <span class="string">&quot;On node %d totalpages: %lu\n&quot;</span>, pgdat-&gt;node_id, realtotalpages);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>(1) <code>spanned_pages</code>指的是所有的物理页，<code>zone_spanned_pages_in_node()</code>函数计算<code>Zone</code>中所有的物理页；<br>(2) 用所有物理页减去<code>Zone</code>中处于<code>hole</code>中的物理页得到实际存在的物理页；<br>(3) 更新<code>Node</code>中和页数量相关的成员变量。</p>
 <h3 id="free-area-init-core"><a href="#free-area-init-core" class="headerlink" title="free_area_init_core()"></a>free_area_init_core()</h3><p>这个函数会调用大量的其它函数来对<code>Zone</code>, <code>free_area</code>进行初始化，下面具体看看做了哪些初始化。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Set up the zone data structures:</span></span><br><span class="line"><span class="comment"> *   - mark all pages reserved</span></span><br><span class="line"><span class="comment"> *   - mark all memory queues empty</span></span><br><span class="line"><span class="comment"> *   - clear the memory bitmaps</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">NOTE:</span> pgdat should get zeroed by caller.</span></span><br><span class="line"><span class="comment"> * <span class="doctag">NOTE:</span> this function is only called during early init.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> __init <span class="title">free_area_init_core</span><span class="params">(struct pglist_data *pgdat)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">enum</span> <span class="title">zone_type</span> <span class="title">j</span>;</span></span><br><span class="line">    <span class="keyword">int</span> nid = pgdat-&gt;node_id;</span><br><span class="line">        </span><br><span class="line">    <span class="comment">// ------------------------------------------------------------ (1)</span></span><br><span class="line">    pgdat_init_internals(pgdat);</span><br><span class="line">    pgdat-&gt;per_cpu_nodestats = &amp;boot_nodestats;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 遍历所有的Zone并进行初始化（这里其实只有DMA和NORMAL两个Zone）</span></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; MAX_NR_ZONES; j++) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span> =</span> pgdat-&gt;node_zones + j;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">long</span> size, freesize, memmap_pages;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">long</span> zone_start_pfn = zone-&gt;zone_start_pfn;</span><br><span class="line"></span><br><span class="line">        size = zone-&gt;spanned_pages;</span><br><span class="line">        freesize = zone-&gt;present_pages;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Adjust freesize so that it accounts for how much memory</span></span><br><span class="line"><span class="comment">         * is used by this zone for memmap. This affects the watermark</span></span><br><span class="line"><span class="comment">         * and per-cpu initialisations</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="comment">// 如果有太多空缺的页（size &gt; 1.25 * freesize），那么就用实际出现的页进行计算</span></span><br><span class="line">        memmap_pages = calc_memmap_size(size, freesize);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// ------------------------------------------------------------ (2)</span></span><br><span class="line">        <span class="keyword">if</span> (!is_highmem_idx(j)) &#123;</span><br><span class="line">            <span class="keyword">if</span> (freesize &gt;= memmap_pages) &#123;</span><br><span class="line">                freesize -= memmap_pages;</span><br><span class="line">                <span class="keyword">if</span> (memmap_pages)</span><br><span class="line">                    printk(KERN_DEBUG</span><br><span class="line">                           <span class="string">&quot;  %s zone: %lu pages used for memmap\n&quot;</span>,</span><br><span class="line">                           zone_names[j], memmap_pages);</span><br><span class="line">            &#125; <span class="keyword">else</span></span><br><span class="line">                pr_warn(<span class="string">&quot;  %s zone: %lu pages exceeds freesize %lu\n&quot;</span>,</span><br><span class="line">                    zone_names[j], memmap_pages, freesize);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Account for reserved pages */</span></span><br><span class="line">        <span class="keyword">if</span> (j == <span class="number">0</span> &amp;&amp; freesize &gt; dma_reserve) &#123;</span><br><span class="line">            freesize -= dma_reserve;</span><br><span class="line">            printk(KERN_DEBUG <span class="string">&quot;  %s zone: %lu pages reserved\n&quot;</span>,</span><br><span class="line">                    zone_names[<span class="number">0</span>], dma_reserve);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!is_highmem_idx(j))</span><br><span class="line">            nr_kernel_pages += freesize;</span><br><span class="line">        <span class="comment">/* Charge for highmem memmap if there are enough kernel pages */</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (nr_kernel_pages &gt; memmap_pages * <span class="number">2</span>)</span><br><span class="line">            nr_kernel_pages -= memmap_pages;</span><br><span class="line">        nr_all_pages += freesize;</span><br><span class="line">                </span><br><span class="line">        <span class="comment">// ------------------------------------------------------------ (3)</span></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Set an approximate value for lowmem here, it will be adjusted</span></span><br><span class="line"><span class="comment">         * when the bootmem allocator frees pages into the buddy system.</span></span><br><span class="line"><span class="comment">         * And all highmem pages will be managed by the buddy system.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        zone_init_internals(zone, j, nid, freesize);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!size)</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果开启CONFIG_HUGETLB_PAGE_SIZE_VARIABLE，那么将更新pageblock_order</span></span><br><span class="line">        <span class="comment">// 否则是一个空函数</span></span><br><span class="line">        set_pageblock_order();</span><br><span class="line">        <span class="comment">// ------------------------------------------------------------ (4)</span></span><br><span class="line">        setup_usemap(pgdat, zone, zone_start_pfn, size);</span><br><span class="line">        <span class="comment">// ------------------------------------------------------------ (5)</span></span><br><span class="line">        init_currently_empty_zone(zone, zone_start_pfn, size);</span><br><span class="line">        <span class="comment">// ------------------------------------------------------------ (6)</span></span><br><span class="line">        memmap_init(size, nid, j, zone_start_pfn);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -740,7 +740,68 @@
         
         
         
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
@@ -793,7 +854,7 @@
     
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 10
+        Total : 15
         </div>
         <!-- search  -->
         
@@ -804,9 +865,63 @@
         
             
             
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/13</span>
+            <a class="archive-post-title" href="/2022/12/13/%E3%80%90LM01%E3%80%91ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">【LM01】ARMv8 MMU的基础知识</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> Invalid date </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">Invalid date</span>
+            <a class="archive-post-title" href="/2023/11/25/Untitled/">[Untitled Post]</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
             <div class="archive-year"> 2023 </div>
             <ul class="year-list">
             
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/01</span>
+            <a class="archive-post-title" href="/2023/07/01/%E3%80%90LM12%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E9%87%8A%E6%94%BE%E7%AF%87/">【LM12】伙伴系统内存释放篇</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/03</span>
+            <a class="archive-post-title" href="/2023/06/03/%E3%80%90LM11%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AF%87/">【LM11】伙伴系统内存分配篇</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/10</span>
+            <a class="archive-post-title" href="/2023/05/10/%E3%80%90LM10%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF/">【LM10】伙伴系统基本信息</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/02</span>
+            <a class="archive-post-title" href="/2023/05/02/%E3%80%90%E6%89%93%E8%84%B8%E7%B3%BB%E5%88%97%E3%80%912022%E6%8A%95%E8%B5%84%E7%AD%96%E7%AD%96%E7%95%A5/">【打脸系列】2022投资策策略</a>
+        </li>
+    
         
         <li class="archive-post-item">
             <span class="archive-post-date">04/25</span>
@@ -861,21 +976,6 @@
             <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
         </li>
     
-        
-            
-            
-                
-                </ul>
-            
-            <div class="archive-year"> 2022 </div>
-            <ul class="year-list">
-            
-        
-        <li class="archive-post-item">
-            <span class="archive-post-date">12/13</span>
-            <a class="archive-post-title" href="/2022/12/13/%E3%80%90LM01%E3%80%91ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">【LM01】ARMv8 MMU的基础知识</a>
-        </li>
-    
     </div>
 </div>
 
@@ -902,6 +1002,16 @@
                 Linux内存管理
             </span>
         
+            <span class="sidebar-tag-name" data-tags="美股">
+                <span class="iconfont-archer">&#xe606;</span>
+                美股
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="投资理财">
+                <span class="iconfont-archer">&#xe606;</span>
+                投资理财
+            </span>
+        
     </div>
     <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
     <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
@@ -916,6 +1026,11 @@
         <span class="sidebar-category-name" data-categories="硬核技术">
             <span class="iconfont-archer">&#xe60a;</span>
             硬核技术
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="股海浮沉">
+            <span class="iconfont-archer">&#xe60a;</span>
+            股海浮沉
         </span>
     
         <span class="sidebar-category-name" data-categories="个人随笔">

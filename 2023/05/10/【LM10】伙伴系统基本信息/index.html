@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="终于到伙伴系统了，不容易啊。在之前的笔记中我已多次提到伙伴系统，从这篇笔记开始，我们来仔细看看伙伴系统是如何实现以及工作的吧。 什么是伙伴系统我这里偷懒，就直接上维基百科的解释了，  The buddy memory allocation technique is a memory allocation algorithm that divides memory into partitions t">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【LM10】伙伴系统基本信息">
+<meta property="og:url" content="http://example.com/2023/05/10/%E3%80%90LM10%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="终于到伙伴系统了，不容易啊。在之前的笔记中我已多次提到伙伴系统，从这篇笔记开始，我们来仔细看看伙伴系统是如何实现以及工作的吧。 什么是伙伴系统我这里偷懒，就直接上维基百科的解释了，  The buddy memory allocation technique is a memory allocation algorithm that divides memory into partitions t">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.imgur.com/sAQ9h3X.png">
+<meta property="article:published_time" content="2023-05-10T19:03:37.000Z">
+<meta property="article:modified_time" content="2023-12-01T08:38:30.162Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Linux_5_0">
+<meta property="article:tag" content="ARMv8_64">
+<meta property="article:tag" content="Linux内存管理">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/sAQ9h3X.png">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/touxiang.png">
+    
+    <title>【LM10】伙伴系统基本信息 · 从零到负一</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20211217" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20211217" as="style">
+    <link rel="stylesheet" href="/css/dark.css">
+    <link rel="stylesheet" href="/css/mobile.css?v=20211217" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20211217" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20211217" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header header-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>从零到负一</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">从零到负一</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">【LM10】伙伴系统基本信息</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:40vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+    
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg-linux.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                【LM10】伙伴系统基本信息
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
+    
+</div>
+
+                
+                <!-- 文章字数统计 -->
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2023/05/10</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>终于到伙伴系统了，不容易啊。在之前的笔记中我已多次提到伙伴系统，从这篇笔记开始，我们来仔细看看伙伴系统是如何实现以及工作的吧。</p>
+<h2 id="什么是伙伴系统"><a href="#什么是伙伴系统" class="headerlink" title="什么是伙伴系统"></a>什么是伙伴系统</h2><p>我这里偷懒，就直接上维基百科的解释了，</p>
+<blockquote>
+<p>The buddy memory allocation technique is a memory allocation algorithm that divides memory into partitions to try to satisfy a memory request as suitably as possible. This system makes use of splitting memory into halves to try to give a best fit. According to Donald Knuth, the buddy system was invented in 1963 by Harry Markowitz, and was first described by Kenneth C. Knowlton (published 1965). The Buddy memory allocation is relatively easy to implement. It supports limited but efficient splitting and coalescing of memory blocks.</p>
+</blockquote>
+<p>简单来说，伙伴系统就是通过将大的内存分成一块一块的，并尽量用大小最合适的内存块来满足分配的需求。在Linux的内核中，伙伴系统将内存空间划分成一块一块的大小为<code>2^n * page</code>的内存块，其中<code>n = [0, 10]</code>。并且相同<code>n</code>的内存块通过链表连接起来。当需要进行内存分配时，Linux内核就会从这些链表中找到最合适内存块，并且将剩下的内存块拆分并插入到更小的<code>n</code>对应的链表中。比如我们需要分配20个页，那么Linux内核就会去<code>n = 5</code>的链表中找空闲的内存块。至于剩下的12个页（<code>2 ^ 5 - 20</code>），则会被拆分成更小的页并插入相应的链表中（当然，实际代码要复杂得多）。</p>
+<h2 id="相关结构体"><a href="#相关结构体" class="headerlink" title="相关结构体"></a>相关结构体</h2><p>在<a target="_blank" rel="noopener" href="https://rdou.github.io/2023/04/25/%E3%80%90LM09%E3%80%91Memblock%E5%88%B0%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%88%87%E6%8D%A2/">【LM09】Memblock到伙伴系统的切换</a>中，我着重介绍了<code>zonelist</code>以及相关的结构体，这里我就不做过多分析了，我们来看看<code>zone</code>相关的几个结构体。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// include/linux/mmzone.h</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">migratetype</span> &#123;</span></span><br><span class="line">    MIGRATE_UNMOVABLE,                           <span class="comment">// 不可移动页，内核中通过线性映射的区域都是不可移动的 </span></span><br><span class="line">    MIGRATE_MOVABLE,                             <span class="comment">// 可移动页</span></span><br><span class="line">    MIGRATE_RECLAIMABLE,                         <span class="comment">// 可回收页</span></span><br><span class="line">    <span class="comment">/* the number of types on the pcp lists */</span></span><br><span class="line">    MIGRATE_PCPTYPES,    </span><br><span class="line">    MIGRATE_HIGHATOMIC = MIGRATE_PCPTYPES,</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_CMA</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * MIGRATE_CMA migration type is designed to mimic the way</span></span><br><span class="line"><span class="comment">     * ZONE_MOVABLE works.  Only movable pages can be allocated</span></span><br><span class="line"><span class="comment">     * from MIGRATE_CMA pageblocks and page allocator never</span></span><br><span class="line"><span class="comment">     * implicitly change migration type of MIGRATE_CMA pageblock.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * The way to use it is to change migratetype of a range of</span></span><br><span class="line"><span class="comment">     * pageblocks to MIGRATE_CMA which can be done by</span></span><br><span class="line"><span class="comment">     * __free_pageblock_cma() function.  What is important though</span></span><br><span class="line"><span class="comment">     * is that a range of pageblocks must be aligned to</span></span><br><span class="line"><span class="comment">     * MAX_ORDER_NR_PAGES should biggest page be bigger then</span></span><br><span class="line"><span class="comment">     * a single pageblock.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    MIGRATE_CMA,</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_MEMORY_ISOLATION</span></span><br><span class="line">    MIGRATE_ISOLATE,    <span class="comment">/* can&#x27;t allocate from here */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    MIGRATE_TYPES</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">free_area</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">free_list</span>[<span class="title">MIGRATE_TYPES</span>];</span></span><br><span class="line">	<span class="comment">// 内存块的数量 </span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> nr_free;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">zone</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Read-mostly fields */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* zone watermarks, access with *_wmark_pages(zone) macros */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> _watermark[NR_WMARK];</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> watermark_boost;</span><br><span class="line">    ...</span><br><span class="line">    ... </span><br><span class="line">    <span class="comment">/* free areas of different sizes */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">free_area</span> <span class="title">free_area</span>[<span class="title">MAX_ORDER</span>];</span></span><br><span class="line">    ... </span><br><span class="line">	... </span><br><span class="line">	<span class="comment">// 伙伴系统管理的page数量</span></span><br><span class="line">	<span class="keyword">atomic_long_t</span> managed_pages;</span><br><span class="line">	... </span><br><span class="line">	... </span><br><span class="line">    <span class="comment">/* Zone statistics */</span></span><br><span class="line">    <span class="keyword">atomic_long_t</span> vm_stat[NR_VM_ZONE_STAT_ITEMS];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里主要关注<code>zone</code>中的<code>watermark</code>以及<code>free_area</code>和<code>migratetype</code>。参考下图关于<code>free_area</code>的示意图（该图来自<code>bin的技术小屋</code>），</p>
+<p><img src="https://i.imgur.com/sAQ9h3X.png"></p>
+<h3 id="ALLOC-掩码和watermarks"><a href="#ALLOC-掩码和watermarks" class="headerlink" title="ALLOC_*掩码和watermarks"></a>ALLOC_*掩码和watermarks</h3><p>Linux在管理内存时，有个很重要的概念是水位线（<code>watermarks</code>）。<code>watermarks</code>决定了内存分配的流程以及处理方式，这里我简单介绍下<code>watermarks</code>，下面内容主要来自<a target="_blank" rel="noopener" href="https://www.cnblogs.com/binlovetech/p/16914715.html">一步一图带你深入理解 Linux 物理内存管理</a>中的<code>5.2 物理内存区域中的水位线</code>以及<a target="_blank" rel="noopener" href="https://www.cnblogs.com/binlovetech/p/17019710.html">深入理解 Linux 物理内存分配全链路实现</a>中的<code>3.1 内存分配行为标识掩码 ALLOC_*</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./include/linux/mmzone.h</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">zone_watermarks</span> &#123;</span></span><br><span class="line">    WMARK_MIN,</span><br><span class="line">    WMARK_LOW,</span><br><span class="line">    WMARK_HIGH,</span><br><span class="line">    NR_WMARK</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> min_wmark_pages(z) (z-&gt;_watermark[WMARK_MIN] + z-&gt;watermark_boost)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> low_wmark_pages(z) (z-&gt;_watermark[WMARK_LOW] + z-&gt;watermark_boost)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> high_wmark_pages(z) (z-&gt;_watermark[WMARK_HIGH] + z-&gt;watermark_boost)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> wmark_pages(z, i) (z-&gt;_watermark[i] + z-&gt;watermark_boost)</span></span><br></pre></td></tr></table></figure>
+<p>在<code>zone</code>结构体中，我们定义了<code>_watermark</code>这个数组以及<code>watermark_boost</code>，后者可以用于动态地调整<code>watermarks</code>。一般来说，</p>
+<ol>
+<li>当<code>zone</code>中的剩余内存空间大于<code>_watermark[WMARK_HIGH]</code>时，内核可以随意地分配内存；</li>
+<li>当<code>zone</code>中的剩余内存空间介于<code>_watermark[WMARK_HIGH]</code>和<code>_watermark[WMARK_LOW]</code>之间时，内核也可以正常地分配内存；</li>
+<li>当<code>zone</code>中的剩余内存空间介于<code>_watermark[WMARK_LOW]</code>和<code>_watermark[WMARK_MIN]</code>之间时，内核分配面临一定的压力，但是还可以满足进程此时的内存分配要求，当给进程分配完内存之后，就会唤醒<code>kswapd</code>进程开始内存回收，直到剩余内存高于<code>_watermark[WMARK_HIGH]</code>为止；</li>
+<li>当<code>zone</code>中的剩余内存空间小于<code>_watermark[WMARK_MIN]</code>，说明此时的内存容量已经非常危险了，如果进程在这时请求内存分配，内核就会进行直接内存回收。</li>
+</ol>
+<p>关于<code>watermarks</code>我就点到为止，不再进行更深一步的研究了，下面来看看<code>ALLOC_*</code>掩码。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/internal.h</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* The ALLOC_WMARK bits are used as an index to zone-&gt;watermark */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_WMARK_MIN      WMARK_MIN</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_WMARK_LOW      WMARK_LOW</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_WMARK_HIGH     WMARK_HIGH</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_NO_WATERMARKS  0x04 <span class="comment">/* don&#x27;t check watermarks at all */</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Mask to get the watermark bits */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_WMARK_MASK     (ALLOC_NO_WATERMARKS-1)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Only MMU archs have async oom victim reclaim - aka oom_reaper so we</span></span><br><span class="line"><span class="comment"> * cannot assume a reduced access to memory reserves is sufficient for</span></span><br><span class="line"><span class="comment"> * !MMU</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_MMU</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_OOM            0x08</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_OOM            ALLOC_NO_WATERMARKS</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_HARDER         0x10 <span class="comment">/* try to alloc harder */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_HIGH           0x20 <span class="comment">/* __GFP_HIGH set */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_CPUSET         0x40 <span class="comment">/* check for correct cpuset */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_CMA            0x80 <span class="comment">/* allow allocations from CMA areas */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_ZONE_DMA32</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_NOFRAGMENT     0x100 <span class="comment">/* avoid mixing pageblock types */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_NOFRAGMENT     0x0</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ALLOC_KSWAPD         0x200 <span class="comment">/* allow waking of kswapd */</span></span></span><br></pre></td></tr></table></figure>
+<p>之前说了这么多<code>watermarks</code>，现在终于联系在一起了。<code>ALLOC_*</code>掩码中有<code>watermarks</code>以及其它几个内存分配相关的掩码。在伙伴系统进行内存分配时，这些掩码都会影响其行为。</p>
+<h3 id="GFP掩码"><a href="#GFP掩码" class="headerlink" title="GFP掩码"></a>GFP掩码</h3><p>除了<code>ALLOC_*</code>掩码，在内存分配的过程中，还有个重要的参数就是<code>GFP</code>掩码，这个掩码同样决定了内存分配的行为。虽然这个掩码不在<code>zone</code>的结构体中，我也将其放在这里进行简单地分析。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./include/linux/gfp.h</span></span><br><span class="line"><span class="comment">// 最底层的标志位，不要直接使用</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_DMA         0x01u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_HIGHMEM     0x02u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_DMA32       0x04u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_MOVABLE     0x08u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_RECLAIMABLE 0x10u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_HIGH        0x20u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_IO          0x40u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_FS          0x80u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_WRITE       0x100u</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ___GFP_NOWARN      0x200u</span></span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line"><span class="comment">// 第二层的标志位</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __GFP_DMA          ((__force gfp_t)___GFP_DMA)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __GFP_HIGHMEM      ((__force gfp_t)___GFP_HIGHMEM)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __GFP_DMA32        ((__force gfp_t)___GFP_DMA32)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __GFP_MOVABLE      ((__force gfp_t)___GFP_MOVABLE)  <span class="comment">/* ZONE_MOVABLE allowed */</span></span></span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line"><span class="comment">// __GFP_XX的组合</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_ATOMIC         (__GFP_HIGH|__GFP_ATOMIC|__GFP_KSWAPD_RECLAIM)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_KERNEL         (__GFP_RECLAIM | __GFP_IO | __GFP_FS)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_KERNEL_ACCOUNT (GFP_KERNEL | __GFP_ACCOUNT)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_NOWAIT         (__GFP_KSWAPD_RECLAIM)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_NOIO           (__GFP_RECLAIM)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_NOFS           (__GFP_RECLAIM | __GFP_IO)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_USER           (__GFP_RECLAIM | __GFP_IO | __GFP_FS | __GFP_HARDWALL)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_DMA            __GFP_DMA</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> GFP_DMA32          __GFP_DMA32</span></span><br><span class="line">...</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>在上面的代码中，有几个掩码是我们需要重点关注的，它们是<code>__GFP_DMA</code>, <code>__GFP_HIGHMEM</code>和<code>__GFP_DMA32</code>。这几个掩码和<code>zonelist</code>一起决定了<code>zone</code>在内存分配时的优先级。单看这几个掩码，比如设置了<code>__GFP_DMA32</code>，那么内核在分配内存时，会按照<code>ZONE_DMA32 -&gt; ZONE_DMA</code>的顺序分配内存。如果设置了<code>__GFP_HIGHMEM</code>，那么就会按照<code>ZONE_HIGHMEM -&gt; ZONE_NORMAL -&gt; ZONE_DMA32 -&gt; ZONE_DMA</code>的顺序分配内存。如果什么都不设置，那么就默认从<code>ZONE_NORMAL</code>开始进行内存的分配。<br>除了这几个掩码，Linux内核还定义了大量的其它掩码，我这里直接引用<a target="_blank" rel="noopener" href="https://www.cnblogs.com/binlovetech/p/17019710.html">深入理解 Linux 物理内存分配全链路实现</a>总结的掩码（要记住是不可能的，使用的时候再回来看看其说明），</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ___GFP_RECLAIMABLE    - 用于指定分配的页面是可以回收的；</span></span><br><span class="line"><span class="comment">// ___GFP_MOVABLE        - 用于指定分配的页面是可以移动的，上面两个标志会影响底层的伙伴系统从哪个区域中去获取空闲内存页；</span></span><br><span class="line"><span class="comment">// ___GFP_HIGH           - 表示该内存分配请求是高优先级的，内核急切的需要内存，如果内存分配失败则会给系统带来非常严重的后果，设置该标志通常内存是不允许分配失败</span></span><br><span class="line"><span class="comment">//                           的，如果空闲内存不足，则会从紧急预留内存中分配；</span></span><br><span class="line"><span class="comment">// ___GFP_IO             - 表示内核在分配物理内存的时候可以发起磁盘IO操作。什么意思呢？比如当内核在进行内存分配的时候，发现物理内存不足，这时需要将不经常使用的</span></span><br><span class="line"><span class="comment">//                         内存页置换到SWAP分区或者SWAP文件中，这时就涉及到了IO操作，如果设置了该标志，表示允许内核将不常用的内存页置换出去；</span></span><br><span class="line"><span class="comment">// ___GFP_FS             - 允许内核执行底层文件系统操作，在与VFS虚拟文件系统层相关联的内核子系统中必须禁用该标志，否则可能会引起文件系统操作的循环递归调用，因</span></span><br><span class="line"><span class="comment">//                         为在设置___GFP_FS标志分配内存的情况下，可能会引起更多的文件系统操作，而这些文件系统的操作可能又会进一步产生内存分配行为，这样一直递</span></span><br><span class="line"><span class="comment">//                         归持续下去；</span></span><br><span class="line"><span class="comment">// ___GFP_ZERO           - 在内核分配内存成功之后，将内存页初始化填充字节0；</span></span><br><span class="line"><span class="comment">// ___GFP_ATOMIC         - 该标志的设置表示内存在分配物理内存的时候不允许睡眠必须是原子性地进行内存分配。比如在中断处理程序中，就不能睡眠，因为中断程序不能被重</span></span><br><span class="line"><span class="comment">//                         新调度。同时也不能在持有自旋锁的进程上下文中睡眠，因为可能导致死锁。综上所述这个标志只能用在不能被重新安全调度的进程上下文中；</span></span><br><span class="line"><span class="comment">// ___GFP_DIRECT_RECLAIM - 表示内核在进行内存分配的时候，可以进行直接内存回收。当剩余内存容量低于水位线_watermark[WMARK_MIN]时，说明此时的内存容量已经非</span></span><br><span class="line"><span class="comment">//                         常危险了，如果进程在这时请求内存分配，内核就会进行直接内存回收，直到内存水位线恢复到_watermark[WMARK_HIGH]之上；</span></span><br><span class="line"><span class="comment">// ___GFP_KSWAPD_RECLAIM - 表示内核在分配内存的时候，如果剩余内存容量在_watermark[WMARK_MIN]与_watermark[WMARK_LOW]之间时，内核就会唤醒kswapd进程开始异步内存回收，</span></span><br><span class="line"><span class="comment">//                         直到剩余内存高于_watermark[WMARK_HIGH]为止；</span></span><br><span class="line"><span class="comment">// ___GFP_NOWARN         - 表示当内核分配内存失败时，抑制内核的分配失败错误报告；</span></span><br><span class="line"><span class="comment">// ___GFP_RETRY_MAYFAIL  - 在内核分配内存失败的时候，允许重试，但重试仍然可能失败，重试若干次后停止。与其对应的是___GFP_NORETRY标志表示分配内存失败时不允许重试；</span></span><br><span class="line"><span class="comment">// ___GFP_NOFAIL         - 在内核分配失败时一直重试直到成功为止；</span></span><br><span class="line"><span class="comment">// ___GFP_HARDWALL       - 该标志限制了内核分配内存的行为只能在当前进程分配到的CPU所关联的NUMA节点上进行分配，当进程可以运行的CPU受限时，该标志才会有意义，如果进程允</span></span><br><span class="line"><span class="comment">//                         许在所有CPU上运行则该标志没有意义；</span></span><br><span class="line"><span class="comment">// ___GFP_THISNODE       - 该标志限制了内核分配内存的行为只能在当前NUMA节点或者在指定NUMA节点中分配内存，如果内存分配失败不允许从其他备用NUMA节点中分配内存；</span></span><br><span class="line"><span class="comment">// ___GFP_MEMALLOC       - 允许内核在分配内存时可以从所有内存区域中获取内存，包括从紧急预留内存中获取。但使用该标示时需要保证进程在获得内存之后会很快的释放掉内存不会过</span></span><br><span class="line"><span class="comment">//                         长时间的占用，尤其要警惕避免过多的消耗紧急预留内存区域中的内存；</span></span><br><span class="line"><span class="comment">// ___GFP_NOMEMALLOC     - 标志用于明确禁止内核从紧急预留内存中获取内存。___GFP_NOMEMALLOC标识的优先级要高于___GFP_MEMALLOC；</span></span><br></pre></td></tr></table></figure>
+<h3 id="fallback"><a href="#fallback" class="headerlink" title="fallback"></a>fallback</h3><p>在<code>free_area</code>的结构体中，我们有多条<code>free_list</code>，并且它们相对都是独立的。因此，在进行内存分配时，如果某一个<code>free_list</code>中没有足够多的内存空间，内核就会按照一定的顺序，去其它<code>free_list</code>中寻找内存空间。这个行为就叫做 - <code>fallback</code>，而这个顺序就定义在<code>fallbacks</code>这个数组中。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * This array describes the order lists are fallen back to when</span></span><br><span class="line"><span class="comment"> * the free lists for the desirable migrate type are depleted</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">int</span> fallbacks[MIGRATE_TYPES][<span class="number">4</span>] = &#123;</span><br><span class="line">	[MIGRATE_UNMOVABLE]   = &#123; MIGRATE_RECLAIMABLE, MIGRATE_MOVABLE,   MIGRATE_TYPES &#125;,</span><br><span class="line">	[MIGRATE_MOVABLE]     = &#123; MIGRATE_RECLAIMABLE, MIGRATE_UNMOVABLE, MIGRATE_TYPES &#125;,</span><br><span class="line">	[MIGRATE_RECLAIMABLE] = &#123; MIGRATE_UNMOVABLE,   MIGRATE_MOVABLE,   MIGRATE_TYPES &#125;,</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_CMA</span></span><br><span class="line">	[MIGRATE_CMA]         = &#123; MIGRATE_TYPES &#125;, <span class="comment">/* Never used */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_MEMORY_ISOLATION</span></span><br><span class="line">	[MIGRATE_ISOLATE]     = &#123; MIGRATE_TYPES &#125;, <span class="comment">/* Never used */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>关于<code>fallback</code>的基本原理，我会在后面内存分配的函数中再做具体的解释说明。接下来，我们就开始正式进入伙伴系统的分配函数了。</p>
+<h2 id="alloc-pages"><a href="#alloc-pages" class="headerlink" title="alloc_pages()"></a>alloc_pages()</h2><p>在伙伴系统中，<code>alloc_pages()</code>这个函数（宏）是一个很高层的封装函数，我们就从这里开始，看看它是如何一步一步地调用底层函数的。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">alloc_pages()</span><br><span class="line">|</span><br><span class="line">+--&gt; alloc_pages_node()</span><br><span class="line">    |</span><br><span class="line">    +--&gt; __alloc_pages_node()</span><br><span class="line">         |</span><br><span class="line">         +--&gt; __alloc_pages()</span><br><span class="line">              |</span><br><span class="line">              +--&gt; __alloc_pages_nodemask()</span><br><span class="line">                   |</span><br><span class="line">                   +--&gt; get_page_from_freelist()</span><br><span class="line">                   <span class="keyword">or</span></span><br><span class="line">                   +--&gt; __alloc_pages_slowpath()</span><br></pre></td></tr></table></figure>
+<p>从上面这段代码可以看出，<code>alloc_pages()</code>基本上就是一路地调用下层函数，直到<code>get_page_from_freelist()</code>或者<code>__alloc_pages_slowpath()</code>函数。后者主要用于内存空间比较紧张的情况，在这种情况下，内存地分配过程会很复杂。前者用于内存空间比较宽裕的情况，这种情况下内存的分配就比较直接简单。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./include/linux/gfp.h </span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> alloc_pages(gfp_mask, order) \</span></span><br><span class="line">    <span class="comment">// numa_node_id()会根据当前CPU的信息确定其nid</span></span><br><span class="line">    alloc_pages_node(numa_node_id(), gfp_mask, order)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Allocate pages, preferring the node given as nid. When nid == NUMA_NO_NODE,</span></span><br><span class="line"><span class="comment"> * prefer the current CPU&#x27;s closest node. Otherwise node must be valid and</span></span><br><span class="line"><span class="comment"> * online.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> struct page *<span class="title">alloc_pages_node</span><span class="params">(<span class="keyword">int</span> nid, <span class="keyword">gfp_t</span> gfp_mask, <span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 如果nid == NUMA_NO_NODE，选择离当前CPU最近的node</span></span><br><span class="line">    <span class="keyword">if</span> (nid == NUMA_NO_NODE)</span><br><span class="line">        nid = numa_mem_id();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> __alloc_pages_node(nid, gfp_mask, order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Allocate pages, preferring the node given as nid. The node must be valid and</span></span><br><span class="line"><span class="comment"> * online. For more general interface, see alloc_pages_node().</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *__<span class="title">alloc_pages_node</span>(<span class="title">int</span> <span class="title">nid</span>, <span class="title">gfp_t</span> <span class="title">gfp_mask</span>, <span class="title">unsigned</span> <span class="title">int</span> <span class="title">order</span>)</span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="comment">// 对nid, gfp_mask进行简单的检查</span></span><br><span class="line">    VM_BUG_ON(nid &lt; <span class="number">0</span> || nid &gt;= MAX_NUMNODES);</span><br><span class="line">    VM_WARN_ON((gfp_mask &amp; __GFP_THISNODE) &amp;&amp; !node_online(nid));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> __alloc_pages(gfp_mask, order, nid);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *__<span class="title">alloc_pages</span>(<span class="title">gfp_t</span> <span class="title">gfp_mask</span>, <span class="title">unsigned</span> <span class="title">int</span> <span class="title">order</span>, <span class="title">int</span> <span class="title">preferred_nid</span>)</span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="comment">// 这里的nodemask(最后一个参数) = NULL，因此在对zonelist进行遍历时，没有额外的node的限制</span></span><br><span class="line">    <span class="keyword">return</span> __alloc_pages_nodemask(gfp_mask, order, preferred_nid, <span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="alloc-pages-nodemask"><a href="#alloc-pages-nodemask" class="headerlink" title="__alloc_pages_nodemask()"></a>__alloc_pages_nodemask()</h3><p>这个函数是伙伴系统的核心函数，它的逻辑很简单，</p>
+<ol>
+<li>先将<code>watermarks</code>设置成<code>ALLOC_WMARK_LOW</code>，然后调用<code>get_page_from_freelist()</code>进行正常的内存分配；</li>
+<li>如果步骤1成功，则返回获取的内存空间；</li>
+<li>如果步骤1失败，那么就继续尝试<code>__alloc_pages_slowpath()</code>并返回获取的内存空间。</li>
+</ol>
+<p>下面直接看代码吧，注释已经很详细了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * This is the &#x27;heart&#x27; of the zoned buddy allocator.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">page</span> *__<span class="title">alloc_pages_nodemask</span>(<span class="title">gfp_t</span> <span class="title">gfp_mask</span>, <span class="title">unsigned</span> <span class="title">int</span> <span class="title">order</span>, <span class="title">int</span> <span class="title">preferred_nid</span>, <span class="title">nodemask_t</span> *<span class="title">nodemask</span>)</span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line">    <span class="comment">// 默认情况下只要处于低水位之上都可以正常的分配内存空间</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> alloc_flags = ALLOC_WMARK_LOW;</span><br><span class="line">    <span class="keyword">gfp_t</span> alloc_mask; <span class="comment">/* The gfp_t that was actually used for allocation */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">alloc_context</span> <span class="title">ac</span> =</span> &#123; &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * There are several places where we assume that the order value is sane</span></span><br><span class="line"><span class="comment">     * so bail out early if the request is out of bound.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (unlikely(order &gt;= MAX_ORDER)) &#123;</span><br><span class="line">        WARN_ON_ONCE(!(gfp_mask &amp; __GFP_NOWARN));</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// gfp_mask需要在gfp_allowed_mask的范围内 - 后者默认为(__GFP_BITS_MASK &amp; ~(__GFP_RECLAIM|__GFP_IO|__GFP_FS))</span></span><br><span class="line">    gfp_mask &amp;= gfp_allowed_mask;</span><br><span class="line">    alloc_mask = gfp_mask;</span><br><span class="line">    <span class="comment">// ------------------------------------------------------------------------------------------------ (1)</span></span><br><span class="line">    <span class="comment">// 参考下面prepare_alloc_pages()函数的分析</span></span><br><span class="line">    <span class="keyword">if</span> (!prepare_alloc_pages(gfp_mask, order, preferred_nid, nodemask, &amp;ac, &amp;alloc_mask, &amp;alloc_flags))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">// ------------------------------------------------------------------------------------------------ (2)</span></span><br><span class="line">    <span class="comment">// 获取ac-&gt;zonelist中优先级小于等于ac-&gt;high_zoneidx、且在指定Node（也可以不指定）中最高优先级的zoneref</span></span><br><span class="line">    finalise_ac(gfp_mask, &amp;ac);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Forbid the first pass from falling back to types that fragment</span></span><br><span class="line"><span class="comment">     * memory until all local zones are considered.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">// 避免内存碎片化的相关分配标识设置，可暂时忽略</span></span><br><span class="line">    alloc_flags |= alloc_flags_nofragment(ac.preferred_zoneref-&gt;zone, gfp_mask);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* First allocation attempt */</span></span><br><span class="line">    <span class="comment">// ------------------------------------------------------------------------------------------------ (3)</span></span><br><span class="line">    <span class="comment">// 第一次尝试进行内存分配，此时的watermarks为ALLOC_WMARK_LOW</span></span><br><span class="line">    page = get_page_from_freelist(alloc_mask, order, alloc_flags, &amp;ac);</span><br><span class="line">    <span class="keyword">if</span> (likely(page))</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 如果执行到这里就说明上面的内存分配失败了，我们需要通过__alloc_pages_slowpath()再次尝试内存的分配</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Apply scoped allocation constraints. This is mainly about GFP_NOFS</span></span><br><span class="line"><span class="comment">     * resp. GFP_NOIO which has to be inherited for all allocation requests</span></span><br><span class="line"><span class="comment">     * from a particular context which has been marked by</span></span><br><span class="line"><span class="comment">     * memalloc_no&#123;fs,io&#125;_&#123;save,restore&#125;.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">// 清除GFP掩码中的(__GFP_IO | __GFP_FS)</span></span><br><span class="line">    alloc_mask = current_gfp_context(gfp_mask);</span><br><span class="line">    ac.spread_dirty_pages = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Restore the original nodemask if it was potentially replaced with</span></span><br><span class="line"><span class="comment">     * &amp;cpuset_current_mems_allowed to optimize the fast-path attempt.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (unlikely(ac.nodemask != nodemask))</span><br><span class="line">        ac.nodemask = nodemask;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 再次尝试分配内存，既然第一次分配失败了，说明内存空间可能出现不足的情况。因此在这里</span></span><br><span class="line">    <span class="comment">// 会做更多的工作比如回收内存等，之后再进行内存的分配</span></span><br><span class="line">    page = __alloc_pages_slowpath(alloc_mask, order, &amp;ac);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 到这里说明内存分配已经成功，做一点收尾工作就可以返回了</span></span><br><span class="line">out:</span><br><span class="line">    <span class="keyword">if</span> (memcg_kmem_enabled() &amp;&amp; (gfp_mask &amp; __GFP_ACCOUNT) &amp;&amp; page &amp;&amp;</span><br><span class="line">        unlikely(memcg_kmem_charge(page, gfp_mask, order) != <span class="number">0</span>)) &#123;</span><br><span class="line">        __free_pages(page, order);</span><br><span class="line">        page = <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    trace_mm_page_alloc(page, order, alloc_mask, ac.migratetype);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> page;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>至此，伙伴系统的基础以及内存分配的基本流程已经介绍完了，在之后的几篇笔记中，我会详细地记录内存的分配和回收。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/binlovetech/p/16914715.html">一步一图带你深入理解 Linux 物理内存管理</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/binlovetech/p/17019710.html">深入理解 Linux 物理内存分配全链路实现</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/binlovetech/p/17090846.html">深度剖析 Linux 伙伴系统的设计与实现</a></li>
+</ol>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href="/2023/06/03/%E3%80%90LM11%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AF%87/" title="【LM11】伙伴系统内存分配篇">
+                    <div class="nextTitle">【LM11】伙伴系统内存分配篇</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2023/05/02/%E3%80%90%E6%89%93%E8%84%B8%E7%B3%BB%E5%88%97%E3%80%912022%E6%8A%95%E8%B5%84%E7%AD%96%E7%AD%96%E7%95%A5/" title="【打脸系列】2022投资策策略">
+                    <div class="prevTitle">【打脸系列】2022投资策策略</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:40vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.</span> <span class="toc-text">什么是伙伴系统</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E7%BB%93%E6%9E%84%E4%BD%93"><span class="toc-number">2.</span> <span class="toc-text">相关结构体</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ALLOC-%E6%8E%A9%E7%A0%81%E5%92%8Cwatermarks"><span class="toc-number">2.1.</span> <span class="toc-text">ALLOC_*掩码和watermarks</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GFP%E6%8E%A9%E7%A0%81"><span class="toc-number">2.2.</span> <span class="toc-text">GFP掩码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#fallback"><span class="toc-number">2.3.</span> <span class="toc-text">fallback</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#alloc-pages"><span class="toc-number">3.</span> <span class="toc-text">alloc_pages()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#alloc-pages-nodemask"><span class="toc-number">3.1.</span> <span class="toc-text">__alloc_pages_nodemask()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">4.</span> <span class="toc-text">参考资料</span></a></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 15
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/13</span>
+            <a class="archive-post-title" href="/2022/12/13/%E3%80%90LM01%E3%80%91ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">【LM01】ARMv8 MMU的基础知识</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> Invalid date </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">Invalid date</span>
+            <a class="archive-post-title" href="/2023/11/25/Untitled/">[Untitled Post]</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2023 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/01</span>
+            <a class="archive-post-title" href="/2023/07/01/%E3%80%90LM12%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E9%87%8A%E6%94%BE%E7%AF%87/">【LM12】伙伴系统内存释放篇</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/03</span>
+            <a class="archive-post-title" href="/2023/06/03/%E3%80%90LM11%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AF%87/">【LM11】伙伴系统内存分配篇</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/10</span>
+            <a class="archive-post-title" href="/2023/05/10/%E3%80%90LM10%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF/">【LM10】伙伴系统基本信息</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/02</span>
+            <a class="archive-post-title" href="/2023/05/02/%E3%80%90%E6%89%93%E8%84%B8%E7%B3%BB%E5%88%97%E3%80%912022%E6%8A%95%E8%B5%84%E7%AD%96%E7%AD%96%E7%95%A5/">【打脸系列】2022投资策策略</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span>
+            <a class="archive-post-title" href="/2023/04/25/%E3%80%90LM09%E3%80%91Memblock%E5%88%B0%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%88%87%E6%8D%A2/">【LM09】Memblock到伙伴系统的切换</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/10</span>
+            <a class="archive-post-title" href="/2023/04/10/%E3%80%90LM08%E3%80%91Node%E5%92%8CZone%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">【LM08】Node和Zone的初始化</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/29</span>
+            <a class="archive-post-title" href="/2023/03/29/%E3%80%90LM07%E3%80%91%E9%87%8D%E6%96%B0%E5%9B%9E%E9%A1%BE%E5%86%85%E5%AD%98%E5%88%9D%E5%A7%8B%E5%8C%96/">【LM07】重新回顾内存初始化</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/12</span>
+            <a class="archive-post-title" href="/2023/03/12/%E3%80%90LM06%E3%80%91bootmem-init()%E5%92%8CLinux%E7%9A%84%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">【LM06】bootmem_init()和Linux的内存模型</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/12</span>
+            <a class="archive-post-title" href="/2023/02/12/%E3%80%90LM05%E3%80%91paging-init()%E4%BB%A5%E5%8F%8A%E5%86%85%E5%AD%98%E7%9A%84%E5%B8%83%E5%B1%80/">【LM05】paging_init()以及内存的布局</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/02</span>
+            <a class="archive-post-title" href="/2023/02/02/%E3%80%90LM04%E3%80%91Memblock%E5%8F%8A%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">【LM04】Memblock及源码分析</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/15</span>
+            <a class="archive-post-title" href="/2023/01/15/%E3%80%90LM03%E3%80%91FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">【LM03】FIXMAP和相关页表的创建</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/05</span>
+            <a class="archive-post-title" href="/2023/01/05/%E3%80%90LM02%E3%80%91ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">【LM02】ARMv8 MMU和Linux的启动</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/03</span>
+            <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="Linux内核">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内核
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux_5_0">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux_5_0
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ARMv8_64">
+                <span class="iconfont-archer">&#xe606;</span>
+                ARMv8_64
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux内存管理">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内存管理
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="美股">
+                <span class="iconfont-archer">&#xe606;</span>
+                美股
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="投资理财">
+                <span class="iconfont-archer">&#xe606;</span>
+                投资理财
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="硬核技术">
+            <span class="iconfont-archer">&#xe60a;</span>
+            硬核技术
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="股海浮沉">
+            <span class="iconfont-archer">&#xe60a;</span>
+            股海浮沉
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="个人随笔">
+            <span class="iconfont-archer">&#xe60a;</span>
+            个人随笔
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMetaRoot = "/"
+    if (siteMetaRoot === "undefined") {
+        siteMetaRoot = '/'
+    }
+    var siteMeta = {
+        url: "http://example.com",
+        root: siteMetaRoot,
+        author: "John Doe"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20211217"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20211217"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20211217" async></script>
+        
+        <!-- mermaid -->
+        
+    </body>
+</html>

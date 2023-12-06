@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!-- title -->
+
+
+    
+
+<!-- keywords -->
+
+
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="John Doe">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="John Doe">
+    
+        <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
+    
+    <meta name="description" content="">
+    <meta name="description" content="接上篇笔记XX，我们先来看看在内存分配时，fallback的是如何实现的。 __rmqueue_fallback()1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071727374757">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【LM12】伙伴系统内存释放篇">
+<meta property="og:url" content="http://example.com/2023/07/01/%E3%80%90LM12%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E9%87%8A%E6%94%BE%E7%AF%87/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="接上篇笔记XX，我们先来看看在内存分配时，fallback的是如何实现的。 __rmqueue_fallback()1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071727374757">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.imgur.com/9pdHUi4h.png">
+<meta property="article:published_time" content="2023-07-01T21:12:20.000Z">
+<meta property="article:modified_time" content="2023-12-05T08:33:17.899Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Linux内核">
+<meta property="article:tag" content="Linux_5_0">
+<meta property="article:tag" content="ARMv8_64">
+<meta property="article:tag" content="Linux内存管理">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/9pdHUi4h.png">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <link rel="icon" href="/assets/touxiang.png">
+    
+    <title>【LM12】伙伴系统内存释放篇 · 从零到负一</title>
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+    (function (w) {
+        'use strict'
+        // rel=preload support test
+        if (!w.loadCSS) {
+            w.loadCSS = function () {}
+        }
+        // define on the loadCSS obj
+        var rp = (loadCSS.relpreload = {})
+        // rel=preload feature support test
+        // runs once and returns a function for compat purposes
+        rp.support = (function () {
+            var ret
+            try {
+                ret = w.document.createElement('link').relList.supports('preload')
+            } catch (e) {
+                ret = false
+            }
+            return function () {
+                return ret
+            }
+        })()
+
+        // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+        // then change that media back to its intended value on load
+        rp.bindMediaToggle = function (link) {
+            // remember existing media attr for ultimate state, or default to 'all'
+            var finalMedia = link.media || 'all'
+
+            function enableStylesheet() {
+                link.media = finalMedia
+            }
+
+            // bind load handlers to enable media
+            if (link.addEventListener) {
+                link.addEventListener('load', enableStylesheet)
+            } else if (link.attachEvent) {
+                link.attachEvent('onload', enableStylesheet)
+            }
+
+            // Set rel and non-applicable media type to start an async request
+            // note: timeout allows this to happen async to let rendering continue in IE
+            setTimeout(function () {
+                link.rel = 'stylesheet'
+                link.media = 'only x'
+            })
+            // also enable media after 3 seconds,
+            // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+            setTimeout(enableStylesheet, 3000)
+        }
+
+        // loop through link elements in DOM
+        rp.poly = function () {
+            // double check this to prevent external calls from running
+            if (rp.support()) {
+                return
+            }
+            var links = w.document.getElementsByTagName('link')
+            for (var i = 0; i < links.length; i++) {
+                var link = links[i]
+                // qualify links to those with rel=preload and as=style attrs
+                if (
+                    link.rel === 'preload' &&
+                    link.getAttribute('as') === 'style' &&
+                    !link.getAttribute('data-loadcss')
+                ) {
+                    // prevent rerunning on link
+                    link.setAttribute('data-loadcss', true)
+                    // bind listeners to toggle media back
+                    rp.bindMediaToggle(link)
+                }
+            }
+        }
+
+        // if unsupported, run the polyfill
+        if (!rp.support()) {
+            // run once at least
+            rp.poly()
+
+            // rerun poly on an interval until onload
+            var run = w.setInterval(rp.poly, 500)
+            if (w.addEventListener) {
+                w.addEventListener('load', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            } else if (w.attachEvent) {
+                w.attachEvent('onload', function () {
+                    rp.poly()
+                    w.clearInterval(run)
+                })
+            }
+        }
+
+        // commonjs
+        if (typeof exports !== 'undefined') {
+            exports.loadCSS = loadCSS
+        } else {
+            w.loadCSS = loadCSS
+        }
+    })(typeof global !== 'undefined' ? global : this)
+</script>
+
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20211217" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/dark.css?v=20211217" as="style">
+    <link rel="stylesheet" href="/css/dark.css">
+    <link rel="stylesheet" href="/css/mobile.css?v=20211217" media="(max-width: 960px)">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js?v=20211217" as="script">
+    <link rel="preload" href="/scripts/dark.js?v=20211217" as="script">
+    <link rel="preload" href="/font/Oswald-Regular.ttf" as="font" crossorigin>
+    <link rel="preload" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" as="font" crossorigin>
+    <!-- algolia -->
+    
+    <!-- 百度统计  -->
+    
+    <!-- 谷歌统计  -->
+    
+<meta name="generator" content="Hexo 5.3.0"></head>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ == undefined) {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js" />')
+        }
+    </script>
+    
+        <body class="post-body">
+    
+        <!-- header -->
+        <header class="header header-mobile">
+    <!-- top read progress line -->
+    <div class="header-element">
+        <div class="read-progress"></div>
+    </div>
+    <!-- sidebar menu button -->
+    <div class="header-element">
+        
+            <div class="header-sidebar-menu">
+        
+            
+                <div style="padding-left: 1px;">&#xe775;</div>
+            
+        </div>
+    </div>
+    <!-- header actions -->
+    <div class="header-actions">
+        <!-- theme mode switch button -->
+        <span class="header-theme-btn header-element">
+            <i class="fas fa-adjust"></i>
+        </span>
+        <!-- back to home page text -->
+        <span class="home-link header-element">
+            <a href=/>从零到负一</a>
+        </span>
+    </div>
+    <!-- toggle banner for post layout -->
+    
+        
+            <div class="banner">
+        
+            <div class="blog-title header-element">
+                <a href="/">从零到负一</a>
+            </div>
+            <div class="post-title header-element">
+                <a href="#" class="post-name">【LM12】伙伴系统内存释放篇</a>
+            </div>
+        </div>
+    
+</header>
+
+        <!-- fixed footer -->
+        <footer class="footer-fixed">
+    <!-- back to top button -->
+    <div class="footer-fixed-element">
+        
+            <div class="back-top back-top-hidden">
+        
+        
+            <div>&#xe639;</div>
+        
+        </div>
+    </div>
+</footer>
+
+        <!-- wrapper -->
+        <div class="wrapper">
+            <div class="site-intro" style="
+
+
+
+
+
+
+
+    height:40vh;
+
+">
+    
+    <!-- 主页  -->
+    
+        
+    <!-- 404页  -->
+    
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg-linux.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+                【LM12】伙伴系统内存释放篇
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+                
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页 meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        
+        
+            
+        
+        
+        <span class="post-category" data-categories="硬核技术"">
+            <i class="fas fa-folder post-category-icon"></i>
+            <span class="post-category-text">
+                硬核技术
+            </span>
+        </span>
+    
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内核">Linux内核</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux_5_0">Linux_5_0</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="ARMv8_64">ARMv8_64</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="Linux内存管理">Linux内存管理</a>
+    
+</div>
+
+                
+                <!-- 文章字数统计 -->
+                
+                <div class="post-intro-meta">
+                    <!-- 撰写日期 -->
+                    <span class="iconfont-archer post-intro-calander">&#xe676;</span>
+                    <span class="post-intro-time">2023/07/01</span>
+                    <!-- busuanzi -->
+                    
+                        <span id="busuanzi_container_page_pv" class="busuanzi-pv">
+                            <span class="iconfont-archer post-intro-busuanzi">&#xe602;</span>
+                            <span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    
+                    <!-- 文章分享 -->
+                    <span class="share-wrapper">
+                        <span class="iconfont-archer share-icon">&#xe71d;</span>
+                        <span class="share-text">Share</span>
+                        <ul class="share-list">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+
+            <script>
+  // get user agent
+  function getBrowserVersions() {
+    var u = window.navigator.userAgent
+    return {
+      userAgent: u,
+      trident: u.indexOf('Trident') > -1, //IE内核
+      presto: u.indexOf('Presto') > -1, //opera内核
+      webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+      gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+      mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+      ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+      android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+      iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+      iPad: u.indexOf('iPad') > -1, //是否为iPad
+      webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+      weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+      uc: u.indexOf('UCBrowser') > -1, //是否为android下的UC浏览器
+    }
+  }
+  var browser = {
+    versions: getBrowserVersions(),
+  }
+  console.log('userAgent: ' + browser.versions.userAgent)
+
+  // callback
+  function fontLoaded() {
+    console.log('font loaded')
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document
+        .getElementsByClassName('intro-title')[0]
+        .classList.add('intro-fade-in')
+      document
+        .getElementsByClassName('intro-subtitle')[0]
+        .classList.add('intro-fade-in')
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in')
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb() {
+    if (browser.versions.uc) {
+      console.log('UCBrowser')
+      fontLoaded()
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular'],
+        },
+        loading: function () {
+          // 所有字体开始加载
+          // console.log('font loading');
+        },
+        active: function () {
+          // 所有字体已渲染
+          fontLoaded()
+        },
+        inactive: function () {
+          // 字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout')
+          fontLoaded()
+        },
+        timeout: 5000, // Set the timeout to two seconds
+      })
+    }
+  }
+
+  function asyncErr() {
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document,
+      t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0]
+    o.src = u
+    if (cb) {
+      o.addEventListener(
+        'load',
+        function (e) {
+          cb(null, e)
+        },
+        false
+      )
+    }
+    if (err) {
+      o.addEventListener(
+        'error',
+        function (e) {
+          err(null, e)
+        },
+        false
+      )
+    }
+    s.parentNode.insertBefore(o, s)
+  }
+
+  var asyncLoadWithFallBack = function (arr, success, reject) {
+    var currReject = function () {
+      reject()
+      arr.shift()
+      if (arr.length) async(arr[0], success, currReject)
+    }
+
+    async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack(
+    [
+      'https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js',
+      'https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js',
+      "/lib/webfontloader.min.js",
+    ],
+    asyncCb,
+    asyncErr
+  )
+</script>
+
+            <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+            <div class="container container-unloaded">
+                <main class="main post-page">
+    <article class="article-entry">
+        <p>接上篇笔记XX，我们先来看看在内存分配时，<code>fallback</code>的是如何实现的。</p>
+<h2 id="rmqueue-fallback"><a href="#rmqueue-fallback" class="headerlink" title="__rmqueue_fallback()"></a>__rmqueue_fallback()</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c </span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Try finding a free buddy page on the fallback list and put it on the free</span></span><br><span class="line"><span class="comment"> * list of requested migratetype, possibly along with other pages from the same</span></span><br><span class="line"><span class="comment"> * block, depending on fragmentation avoidance heuristics. Returns true if</span></span><br><span class="line"><span class="comment"> * fallback was found so that __rmqueue_smallest() can grab it.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * The use of signed ints for order and current_order is a deliberate</span></span><br><span class="line"><span class="comment"> * deviation from the rest of this file, to make the for loop</span></span><br><span class="line"><span class="comment"> * condition simpler.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">static</span> __always_inline <span class="keyword">bool</span></span><br><span class="line">__rmqueue_fallback(struct zone *zone, <span class="keyword">int</span> order, <span class="keyword">int</span> start_migratetype,</span><br><span class="line">                        <span class="keyword">unsigned</span> <span class="keyword">int</span> alloc_flags)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">free_area</span> *<span class="title">area</span>;</span></span><br><span class="line">    <span class="keyword">int</span> current_order;</span><br><span class="line">    <span class="keyword">int</span> min_order = order;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line">    <span class="keyword">int</span> fallback_mt;</span><br><span class="line">    <span class="keyword">bool</span> can_steal;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Do not steal pages from freelists belonging to other pageblocks</span></span><br><span class="line"><span class="comment">     * i.e. orders &lt; pageblock_order. If there are no local zones free,</span></span><br><span class="line"><span class="comment">     * the zonelists will be reiterated without ALLOC_NOFRAGMENT.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">     <span class="comment">// pageblock_order一般等于MAX_ORDER - 1</span></span><br><span class="line">    <span class="keyword">if</span> (alloc_flags &amp; ALLOC_NOFRAGMENT)</span><br><span class="line">        min_order = pageblock_order;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Find the largest available free page in the other list. This roughly</span></span><br><span class="line"><span class="comment">     * approximates finding the pageblock with the most free pages, which</span></span><br><span class="line"><span class="comment">     * would be too costly to do exactly.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">for</span> (current_order = MAX_ORDER - <span class="number">1</span>; current_order &gt;= min_order; --current_order) &#123;</span><br><span class="line">        area = &amp;(zone-&gt;free_area[current_order]);</span><br><span class="line">        <span class="comment">// ------------------------------------------------------------------------------------------------ (1)    </span></span><br><span class="line">        fallback_mt = find_suitable_fallback(area, current_order, start_migratetype, <span class="literal">false</span>, &amp;can_steal);</span><br><span class="line">        <span class="keyword">if</span> (fallback_mt == <span class="number">-1</span>)</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * We cannot steal all free pages from the pageblock and the</span></span><br><span class="line"><span class="comment">         * requested migratetype is movable. In that case it&#x27;s better to</span></span><br><span class="line"><span class="comment">         * steal and split the smallest available page instead of the</span></span><br><span class="line"><span class="comment">         * largest available page, because even if the next movable</span></span><br><span class="line"><span class="comment">         * allocation falls back into a different pageblock than this</span></span><br><span class="line"><span class="comment">         * one, it won&#x27;t cause permanent fragmentation.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="comment">// ------------------------------------------------------------------------------------------------ (2)    </span></span><br><span class="line">        <span class="keyword">if</span> (!can_steal &amp;&amp; start_migratetype == MIGRATE_MOVABLE &amp;&amp; current_order &gt; order)</span><br><span class="line">            <span class="keyword">goto</span> find_smallest;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">goto</span> do_steal;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">find_smallest:</span><br><span class="line">    <span class="comment">// ---------------------------------------------------------------------------------------------------- (3)</span></span><br><span class="line">    <span class="keyword">for</span> (current_order = order; current_order &lt; MAX_ORDER; current_order++) &#123;</span><br><span class="line">        area = &amp;(zone-&gt;free_area[current_order]);</span><br><span class="line">        fallback_mt = find_suitable_fallback(area, current_order, start_migratetype, <span class="literal">false</span>, &amp;can_steal);</span><br><span class="line">        <span class="keyword">if</span> (fallback_mt != <span class="number">-1</span>)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * This should not happen - we already found a suitable fallback</span></span><br><span class="line"><span class="comment">     * when looking for the largest page.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    VM_BUG_ON(current_order == MAX_ORDER);</span><br><span class="line"></span><br><span class="line">do_steal:</span><br><span class="line">    <span class="comment">// 这里的page就是找到最合适的目标order + migratetype处的内存块</span></span><br><span class="line">    page = list_first_entry(&amp;area-&gt;free_list[fallback_mt], struct page, lru);</span><br><span class="line">    <span class="comment">// ---------------------------------------------------------------------------------------------------- (4)</span></span><br><span class="line">    steal_suitable_fallback(zone, page, alloc_flags, start_migratetype, can_steal);</span><br><span class="line"></span><br><span class="line">    trace_mm_page_alloc_extfrag(page, order, current_order, start_migratetype, fallback_mt);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面的注释简单说明了<code>fallback</code>是如何工作的，在看代码注释前，我这里先简单说明下<code>fallback</code>的工作原理。</p>
+<ol>
+<li><code>fallback</code>不是仅从不同的<code>migratetype</code>中偷内存空间，而是从不同的<code>order + migratetype</code>中偷内存空间，所以我们首先就需要确定<code>order + migratetype</code>；</li>
+<li><code>order</code>直接遍历即可，<code>migratetype</code>需要靠遍历<code>fallbacks</code>这个二维数组；因为是去不同的<code>order</code>偷内存，为了减少内存碎片，Linux内核会从高<code>order</code>开始遍历；为什么这么做？我个人理解如下：在内存分配时，内核是按照<code>order</code>从小到大的顺序分配内存的，如果偷走了小<code>order</code>的内存，那么出现内存不足的情况会上升。这样还需要获取高<code>order</code>的内存块，然后再填补低<code>order</code>的内存块。这样就不如偷的时候直接偷高<code>order</code>的内存；</li>
+<li>我们从目标<code>order + migratetype</code>中偷取内存块，并将其存入目标<code>order</code> + 原始<code>migratetype</code>中。这样，在下次通过原始<code>migratetype</code>进行内存分配时，伙伴系统可以在高阶<code>order</code>处找到空闲的内存块并将其拆分使用。</li>
+</ol>
+<p>接下来看看代码注释吧，<br>(1) 确定两个东西，第一，目标<code>migratetype</code>，也就是<code>fallback_mt</code>；第二，<code>can_steal</code>是否为真，如果为真，那么就会去偷整个<code>pageblock</code>，否则只会去偷单个页块。find_suitable_fallback()这个函数就不展开了；<br>(2) 满足这种调节我们就没有必要去考虑碎片化的问题了，因此可以直接从小的<code>order</code>开始寻找合适的<code>free_list</code>；<br>(3) 完成(2)中需要的遍历；<br>(4) 这个就是偷内存的核心函数，我们先来看看它的输入参数是什么，<code>page</code>是已经找到的<code>order + migratetype</code>中的第一个内存块；<code>start_migratetype</code>是目标<code>migratetype</code>；<code>can_steal</code>赋值给<code>whole_block</code>。下面的源码，主要关注<code>steal_suitable_fallback()</code>的大逻辑即可。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// #####################################################################################</span></span><br><span class="line"><span class="comment">// steal_suitable_fallback()</span></span><br><span class="line"><span class="comment">// #####################################################################################</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * This function implements actual steal behaviour. If order is large enough,</span></span><br><span class="line"><span class="comment"> * we can steal whole pageblock. If not, we first move freepages in this</span></span><br><span class="line"><span class="comment"> * pageblock to our migratetype and determine how many already-allocated pages</span></span><br><span class="line"><span class="comment"> * are there in the pageblock with a compatible migratetype. If at least half</span></span><br><span class="line"><span class="comment"> * of pages are free or compatible, we can change migratetype of the pageblock</span></span><br><span class="line"><span class="comment"> * itself, so pages freed in the future will be put on the correct free list.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">steal_suitable_fallback</span><span class="params">(struct zone *zone, struct page *page,</span></span></span><br><span class="line"><span class="function"><span class="params">        <span class="keyword">unsigned</span> <span class="keyword">int</span> alloc_flags, <span class="keyword">int</span> start_type, <span class="keyword">bool</span> whole_block)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> current_order = page_order(page);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">free_area</span> *<span class="title">area</span>;</span></span><br><span class="line">    <span class="keyword">int</span> free_pages, movable_pages, alike_pages;</span><br><span class="line">    <span class="keyword">int</span> old_block_type;</span><br><span class="line"></span><br><span class="line">    old_block_type = get_pageblock_migratetype(page);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * This can happen due to races and we want to prevent broken</span></span><br><span class="line"><span class="comment">     * highatomic accounting.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (is_migrate_highatomic(old_block_type))</span><br><span class="line">        <span class="keyword">goto</span> single_page;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Take ownership for orders &gt;= pageblock_order */</span></span><br><span class="line">    <span class="keyword">if</span> (current_order &gt;= pageblock_order) &#123;</span><br><span class="line">        change_pageblock_range(page, current_order, start_type);</span><br><span class="line">        <span class="keyword">goto</span> single_page;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Boost watermarks to increase reclaim pressure to reduce the</span></span><br><span class="line"><span class="comment">     * likelihood of future fallbacks. Wake kswapd now as the node</span></span><br><span class="line"><span class="comment">     * may be balanced overall and kswapd will not wake naturally.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    boost_watermark(zone);</span><br><span class="line">    <span class="keyword">if</span> (alloc_flags &amp; ALLOC_KSWAPD)</span><br><span class="line">        set_bit(ZONE_BOOSTED_WATERMARK, &amp;zone-&gt;flags);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* We are not allowed to try stealing from the whole block */</span></span><br><span class="line">    <span class="comment">// --------------------------------------------------------------------------------- (1) </span></span><br><span class="line">    <span class="keyword">if</span> (!whole_block)</span><br><span class="line">        <span class="keyword">goto</span> single_page;</span><br><span class="line"></span><br><span class="line">    free_pages = move_freepages_block(zone, page, start_type, &amp;movable_pages);</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * Determine how many pages are compatible with our allocation.</span></span><br><span class="line"><span class="comment">     * For movable allocation, it&#x27;s the number of movable pages which</span></span><br><span class="line"><span class="comment">     * we just obtained. For o:ther types it&#x27;s a bit more tricky.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (start_type == MIGRATE_MOVABLE) &#123;</span><br><span class="line">        alike_pages = movable_pages;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * If we are falling back a RECLAIMABLE or UNMOVABLE allocation</span></span><br><span class="line"><span class="comment">         * to MOVABLE pageblock, consider all non-movable pages as</span></span><br><span class="line"><span class="comment">         * compatible. If it&#x27;s UNMOVABLE falling back to RECLAIMABLE or</span></span><br><span class="line"><span class="comment">         * vice versa, be conservative since we can&#x27;t distinguish the</span></span><br><span class="line"><span class="comment">         * exact migratetype of non-movable pages.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span> (old_block_type == MIGRATE_MOVABLE)</span><br><span class="line">            alike_pages = pageblock_nr_pages</span><br><span class="line">                        - (free_pages + movable_pages);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            alike_pages = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* moving whole block can fail due to zone boundary conditions */</span></span><br><span class="line">    <span class="keyword">if</span> (!free_pages)</span><br><span class="line">        <span class="keyword">goto</span> single_page;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * If a sufficient number of pages in the block are either free or of</span></span><br><span class="line"><span class="comment">     * comparable migratability as our allocation, claim the whole block.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (free_pages + alike_pages &gt;= (<span class="number">1</span> &lt;&lt; (pageblock_order<span class="number">-1</span>)) ||</span><br><span class="line">            page_group_by_mobility_disabled)</span><br><span class="line">        set_pageblock_migratetype(page, start_type);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"><span class="comment">// ------------------------------------------------------------------------------------- (2) </span></span><br><span class="line">single_page:</span><br><span class="line">    area = &amp;zone-&gt;free_area[current_order];</span><br><span class="line">    list_move(&amp;page-&gt;lru, &amp;area-&gt;free_list[start_type]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// #####################################################################################</span></span><br><span class="line"><span class="comment">// move_freepages_block()</span></span><br><span class="line"><span class="comment">// #####################################################################################</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">move_freepages_block</span><span class="params">(struct zone *zone, struct page *page,</span></span></span><br><span class="line"><span class="function"><span class="params">                <span class="keyword">int</span> migratetype, <span class="keyword">int</span> *num_movable)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> start_pfn, end_pfn;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">start_page</span>, *<span class="title">end_page</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (num_movable)</span><br><span class="line">        *num_movable = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    start_pfn = page_to_pfn(page);</span><br><span class="line">    start_pfn = start_pfn &amp; ~(pageblock_nr_pages<span class="number">-1</span>);</span><br><span class="line">    start_page = pfn_to_page(start_pfn);</span><br><span class="line">    end_page = start_page + pageblock_nr_pages - <span class="number">1</span>;</span><br><span class="line">    end_pfn = start_pfn + pageblock_nr_pages - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Do not cross zone boundaries */</span></span><br><span class="line">    <span class="keyword">if</span> (!zone_spans_pfn(zone, start_pfn))</span><br><span class="line">        start_page = page;</span><br><span class="line">    <span class="keyword">if</span> (!zone_spans_pfn(zone, end_pfn))</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> move_freepages(zone, start_page, end_page, migratetype, num_movable);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// #####################################################################################</span></span><br><span class="line"><span class="comment">// move_freepagesm() </span></span><br><span class="line"><span class="comment">// #####################################################################################</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Move the free pages in a range to the free lists of the requested type.</span></span><br><span class="line"><span class="comment"> * Note that start_page and end_pages are not aligned on a pageblock</span></span><br><span class="line"><span class="comment"> * boundary. If alignment is required, use move_freepages_block()</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">move_freepages</span><span class="params">(struct zone *zone,</span></span></span><br><span class="line"><span class="function"><span class="params">              struct page *start_page, struct page *end_page,</span></span></span><br><span class="line"><span class="function"><span class="params">              <span class="keyword">int</span> migratetype, <span class="keyword">int</span> *num_movable)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> order;</span><br><span class="line">    <span class="keyword">int</span> pages_moved = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> CONFIG_HOLES_IN_ZONE</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">     * page_zone is not safe to call in this context when</span></span><br><span class="line"><span class="comment">     * CONFIG_HOLES_IN_ZONE is set. This bug check is probably redundant</span></span><br><span class="line"><span class="comment">     * anyway as we check zone boundaries in move_freepages_block().</span></span><br><span class="line"><span class="comment">     * Remove at a later date when no bug reports exist related to</span></span><br><span class="line"><span class="comment">     * grouping pages by mobility</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    VM_BUG_ON(pfn_valid(page_to_pfn(start_page)) &amp;&amp;</span><br><span class="line">              pfn_valid(page_to_pfn(end_page)) &amp;&amp;</span><br><span class="line">              page_zone(start_page) != page_zone(end_page));</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="keyword">for</span> (page = start_page; page &lt;= end_page;) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!pfn_valid_within(page_to_pfn(page))) &#123;</span><br><span class="line">            page++;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Make sure we are not inadvertently changing nodes */</span></span><br><span class="line">        VM_BUG_ON_PAGE(page_to_nid(page) != zone_to_nid(zone), page);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!PageBuddy(page)) &#123;</span><br><span class="line">            <span class="comment">/*</span></span><br><span class="line"><span class="comment">             * We assume that pages that could be isolated for</span></span><br><span class="line"><span class="comment">             * migration are movable. But we don&#x27;t actually try</span></span><br><span class="line"><span class="comment">             * isolating, as that would be expensive.</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="keyword">if</span> (num_movable &amp;&amp;</span><br><span class="line">                    (PageLRU(page) || __PageMovable(page)))</span><br><span class="line">                (*num_movable)++;</span><br><span class="line"></span><br><span class="line">            page++;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        order = page_order(page);</span><br><span class="line">        list_move(&amp;page-&gt;lru,</span><br><span class="line">              &amp;zone-&gt;free_area[order].free_list[migratetype]);</span><br><span class="line">        page += <span class="number">1</span> &lt;&lt; order;</span><br><span class="line">        pages_moved += <span class="number">1</span> &lt;&lt; order;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> pages_moved;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>(1) 只要满足输入的<code>can_steal</code>为真，那么我们就直接进行<code>move_freepages_block()</code>，否则只会进行单内存块的移动操作；那么<code>move_freepages_block()</code>做了什么？通过源码可以知道它将尝试移动大小为<code>2 ^ (MAX_ORDER - 1)</code>的内存块。<br>(2) 对于这种情况，我们只需要偷一个页块，因此直接对<code>list</code>进行操作即可。</p>
+<p>至此，我们基本了解了<code>fallback</code>是如何工作的了。这里面的细节也很多，但只要抓住了主要的逻辑，<code>fallback</code>还是比较好理解的。完成<code>fallback</code>的知识点后，我们再来看看另一个知识点 - <code>pcplist</code></p>
+<h2 id="pcplist"><a href="#pcplist" class="headerlink" title="pcplist"></a>pcplist</h2><p>PCP是伙伴系统中的一个小知识点，简单来说就是内核会频繁地分配回收<code>order = 0</code>的页块，如果还是每次地调用伙伴系统来完成分配和回收，随着CPU数量的增加，<code>spin_lock</code>的竞争会加剧。为了缓解这种情况，Linux内核为每个CPU准备了一些专门的页，这些页就保存在<code>pcplist</code>中。下面一段简介摘于网络：</p>
+<blockquote>
+<p>Linux系统中0阶内存分配需求是最多的， 而且经常存在频繁分配释放的行为，如果每次都去伙伴系统中申请，会经常需要获取zone-&gt;lock锁住整个zone区域。随着CPU核心数的增加，伙伴系统锁竞争激烈程度也会越来越大。为了改善这个问题，linux内核中引入了per_cpu_pageset（下面简称pcp）。优化思路是先从zone一次性拿一些页出来，放到每个cpu自己本地中。释放也先放回到这里，等满了再一起还给zone。</p>
+</blockquote>
+<p>通过之前的分析，我们已经知道，如果只需要一个页，那么就直接从<code>pcplist</code>中获取该页。这里我们先来看看<code>pcp</code>相关的结构体。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./include/linux/mmzone.h</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">zone</span> &#123;</span></span><br><span class="line">	...</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pageset</span> __<span class="title">percpu</span> *<span class="title">pageset</span>;</span></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pageset</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pages</span> <span class="title">pcp</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_NUMA</span></span><br><span class="line">	s8 expire;</span><br><span class="line">	u16 vm_numa_stat_diff[NR_VM_NUMA_STAT_ITEMS];</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_SMP</span></span><br><span class="line">	s8 stat_threshold;</span><br><span class="line">	s8 vm_stat_diff[NR_VM_ZONE_STAT_ITEMS];</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pages</span> &#123;</span></span><br><span class="line">	<span class="keyword">int</span> count;		<span class="comment">/* number of pages in the list */</span></span><br><span class="line">	<span class="keyword">int</span> high;		<span class="comment">/* high watermark, emptying needed */</span></span><br><span class="line">	<span class="keyword">int</span> batch;		<span class="comment">/* chunk size for buddy add/remove */</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Lists of pages, one per migrate type stored on the pcp-lists */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">lists</span>[<span class="title">MIGRATE_PCPTYPES</span>];</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>我们可以看出，<code>pcp</code>是在<code>zone</code>中的（小知识，<code>zone</code>是可以被多个CPU共享的，多个CPU都在一个<code>node</code>中）。在每个<code>zone</code>中都有一个<code>pcp</code>来保证每个CPU都有自己独立的一部分内存空间。</p>
+<p>重新回顾<code>rmqueue()</code>函数，在该函数中，通过调用<code>rmqueue_pcplist()</code>来获取<code>pcplist</code>中的页。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Allocate a page from the given zone. Use pcplists for order-0 allocations.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">inline</span></span><br><span class="line"><span class="function">struct page *<span class="title">rmqueue</span><span class="params">(struct zone *preferred_zone,</span></span></span><br><span class="line"><span class="function"><span class="params">            struct zone *zone, <span class="keyword">unsigned</span> <span class="keyword">int</span> order,</span></span></span><br><span class="line"><span class="function"><span class="params">            <span class="keyword">gfp_t</span> gfp_flags, <span class="keyword">unsigned</span> <span class="keyword">int</span> alloc_flags,</span></span></span><br><span class="line"><span class="function"><span class="params">            <span class="keyword">int</span> migratetype)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> flags;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果只需要获取一个页，那么先尝试从pcplist中获取</span></span><br><span class="line">    <span class="keyword">if</span> (likely(order == <span class="number">0</span>)) &#123;</span><br><span class="line">        page = rmqueue_pcplist(preferred_zone, zone, order, gfp_flags, migratetype, alloc_flags);</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line">    &#125;</span><br><span class="line">	...</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
+<h3 id="rmqueue-pcplist"><a href="#rmqueue-pcplist" class="headerlink" title="rmqueue_pcplist()"></a>rmqueue_pcplist()</h3><p>这个函数主要是获取<code>pcp</code>然后通过调用<code>__rmqueue_pcplist()</code>函数来获取一个页。我们先看<code>rmqueue_pcplist()</code>再看<code>__rmqueue_pcplist()</code>函数。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Lock and remove page from the per-cpu list */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> struct page *<span class="title">rmqueue_pcplist</span><span class="params">(struct zone *preferred_zone,</span></span></span><br><span class="line"><span class="function"><span class="params">			struct zone *zone, <span class="keyword">gfp_t</span> gfp_flags,</span></span></span><br><span class="line"><span class="function"><span class="params">			<span class="keyword">int</span> migratetype, <span class="keyword">unsigned</span> <span class="keyword">int</span> alloc_flags)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pages</span> *<span class="title">pcp</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">list</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> flags;</span><br><span class="line"></span><br><span class="line">	local_irq_save(flags);</span><br><span class="line">	pcp = &amp;this_cpu_ptr(zone-&gt;pageset)-&gt;pcp;</span><br><span class="line">	<span class="comment">// pcplist中也分不同的migratetype</span></span><br><span class="line">	<span class="built_in">list</span> = &amp;pcp-&gt;lists[migratetype];</span><br><span class="line">	<span class="comment">// 通过pcplist获取一个页</span></span><br><span class="line">	page = __rmqueue_pcplist(zone, migratetype, alloc_flags, pcp, <span class="built_in">list</span>);</span><br><span class="line">	<span class="keyword">if</span> (page) &#123;</span><br><span class="line">		__count_zid_vm_events(PGALLOC, page_zonenum(page), <span class="number">1</span>);</span><br><span class="line">		zone_statistics(preferred_zone, zone);</span><br><span class="line">	&#125;</span><br><span class="line">	local_irq_restore(flags);</span><br><span class="line">	<span class="keyword">return</span> page;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="rmqueue-pcplist-1"><a href="#rmqueue-pcplist-1" class="headerlink" title="__rmqueue_pcplist()"></a>__rmqueue_pcplist()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Remove page from the per-cpu list, caller must protect the list */</span></span><br><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">page</span> *__<span class="title">rmqueue_pcplist</span>(<span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span>, <span class="title">int</span> <span class="title">migratetype</span>,</span></span><br><span class="line"><span class="class">			<span class="title">unsigned</span> <span class="title">int</span> <span class="title">alloc_flags</span>,</span></span><br><span class="line"><span class="class">			<span class="keyword">struct</span> <span class="title">per_cpu_pages</span> *<span class="title">pcp</span>,</span></span><br><span class="line"><span class="class">			<span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">list</span>)</span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">do</span> &#123;</span><br><span class="line">	    <span class="comment">// Case1: 如果list为空，那么我们就会通过rmqueue_bulk()函数来获取pcp-&gt;batch数量的页</span></span><br><span class="line">	    <span class="comment">// 这些页将用于补充pcplist</span></span><br><span class="line">		<span class="keyword">if</span> (list_empty(<span class="built_in">list</span>)) &#123;</span><br><span class="line">			pcp-&gt;count += rmqueue_bulk(zone, <span class="number">0</span>,</span><br><span class="line">					pcp-&gt;batch, <span class="built_in">list</span>,</span><br><span class="line">					migratetype, alloc_flags);</span><br><span class="line">			<span class="keyword">if</span> (unlikely(list_empty(<span class="built_in">list</span>)))</span><br><span class="line">				<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="comment">// Case2: 如果list不为空，那么很简单，直接获取一页即可</span></span><br><span class="line">		page = list_first_entry(<span class="built_in">list</span>, struct page, lru);</span><br><span class="line">		list_del(&amp;page-&gt;lru);</span><br><span class="line">		pcp-&gt;count--;</span><br><span class="line">	&#125; <span class="keyword">while</span> (check_new_pcp(page));</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> page;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面的第二种情况可以直接获取页，第一种情况需要使用伙伴系统获取内存块，然后再通过<code>pcplist</code>获取页，下面我们来看看<code>rmqueue_bulk()</code>函数。</p>
+<h3 id="rmqueue-bulk"><a href="#rmqueue-bulk" class="headerlink" title="rmqueue_bulk()"></a>rmqueue_bulk()</h3><p>这个函数只需要明白是调用<code>__rmqueue()</code>就行了，剩下的其它内容简单看看就行了（其实我也不太懂）。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Obtain a specified number of elements from the buddy allocator, all under</span></span><br><span class="line"><span class="comment"> * a single hold of the lock, for efficiency.  Add them to the supplied list.</span></span><br><span class="line"><span class="comment"> * Returns the number of new pages which were placed at *list.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">rmqueue_bulk</span><span class="params">(struct zone *zone, <span class="keyword">unsigned</span> <span class="keyword">int</span> order,</span></span></span><br><span class="line"><span class="function"><span class="params">			<span class="keyword">unsigned</span> <span class="keyword">long</span> count, struct list_head *<span class="built_in">list</span>,</span></span></span><br><span class="line"><span class="function"><span class="params">			<span class="keyword">int</span> migratetype, <span class="keyword">unsigned</span> <span class="keyword">int</span> alloc_flags)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> i, alloced = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	spin_lock(&amp;zone-&gt;lock);</span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; count; ++i) &#123;</span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span> =</span> __rmqueue(zone, order, migratetype, alloc_flags);</span><br><span class="line">		<span class="keyword">if</span> (unlikely(page == <span class="literal">NULL</span>))</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (unlikely(check_pcp_refill(page)))</span><br><span class="line">			<span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/*</span></span><br><span class="line"><span class="comment">		 * Split buddy pages returned by expand() are received here in</span></span><br><span class="line"><span class="comment">		 * physical page order. The page is added to the tail of</span></span><br><span class="line"><span class="comment">		 * caller&#x27;s list. From the callers perspective, the linked list</span></span><br><span class="line"><span class="comment">		 * is ordered by page number under some conditions. This is</span></span><br><span class="line"><span class="comment">		 * useful for IO devices that can forward direction from the</span></span><br><span class="line"><span class="comment">		 * head, thus also in the physical page order. This is useful</span></span><br><span class="line"><span class="comment">		 * for IO devices that can merge IO requests if the physical</span></span><br><span class="line"><span class="comment">		 * pages are ordered properly.</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		<span class="comment">// 获取的页放在list的尾部	</span></span><br><span class="line">		list_add_tail(&amp;page-&gt;lru, <span class="built_in">list</span>);</span><br><span class="line">		alloced++;</span><br><span class="line">		<span class="keyword">if</span> (is_migrate_cma(get_pcppage_migratetype(page)))</span><br><span class="line">			__mod_zone_page_state(zone, NR_FREE_CMA_PAGES,</span><br><span class="line">					      -(<span class="number">1</span> &lt;&lt; order));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * i pages were removed from the buddy list even if some leak due</span></span><br><span class="line"><span class="comment">	 * to check_pcp_refill failing so adjust NR_FREE_PAGES based</span></span><br><span class="line"><span class="comment">	 * on i. Do not confuse with &#x27;alloced&#x27; which is the number of</span></span><br><span class="line"><span class="comment">	 * pages added to the pcp list.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	__mod_zone_page_state(zone, NR_FREE_PAGES, -(i &lt;&lt; order));</span><br><span class="line">	spin_unlock(&amp;zone-&gt;lock);</span><br><span class="line">	<span class="keyword">return</span> alloced;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>好了，到目前为止，<code>fallback</code>和<code>pcplist</code>我们都搞明白了，接下来就要看内存的释放了。相比内存的分配，内存的释放要简单很多，我争取在这篇笔记完成内存释放的所有内容。</p>
+<h2 id="内存的释放"><a href="#内存的释放" class="headerlink" title="内存的释放"></a>内存的释放</h2><p>这里我先放一张<code>bin的技术小屋</code>的图片，可以看出，伙伴系统的内存释放最后都会到达<code>free_the_page()</code>函数。我们先简单看看这几个函数，</p>
+<p><img src="https://i.imgur.com/9pdHUi4h.png"></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./include/linux/gfp.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __free_page(page) __free_pages((page), 0)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> free_page(addr) free_pages((addr), 0)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">free_pages</span><span class="params">(<span class="keyword">unsigned</span> <span class="keyword">long</span> addr, <span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (addr != <span class="number">0</span>) &#123;</span><br><span class="line">		VM_BUG_ON(!virt_addr_valid((<span class="keyword">void</span> *)addr));</span><br><span class="line">		__free_pages(virt_to_page((<span class="keyword">void</span> *)addr), order);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">void</span> __free_pages(struct page *page, <span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (put_page_testzero(page))</span><br><span class="line">		free_the_page(page, order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">void</span> <span class="title">free_the_page</span><span class="params">(struct page *page, <span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (order == <span class="number">0</span>)		<span class="comment">/* Via pcp? */</span></span><br><span class="line">		free_unref_page(page);</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		__free_pages_ok(page, order);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>同内存的分配相似，这里我们也有两条路可以走，第一条是<code>order == 0</code>的情况，要用到<code>pcplist</code>；第二条是<code>order &gt; 0</code>的情况，要用到伙伴系统；我们先来看第二种情况。</p>
+<h3 id="free-pages-ok"><a href="#free-pages-ok" class="headerlink" title="__free_pages_ok()"></a>__free_pages_ok()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> __free_pages_ok(struct page *page, <span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> flags;</span><br><span class="line">	<span class="keyword">int</span> migratetype;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> pfn = page_to_pfn(page);</span><br><span class="line">	<span class="comment">// 对page的一些flag进行处理，如果该page无效，则直接返回NULL	</span></span><br><span class="line">	<span class="keyword">if</span> (!free_pages_prepare(page, order, <span class="literal">true</span>))</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">	migratetype = get_pfnblock_migratetype(page, pfn);</span><br><span class="line">	local_irq_save(flags);</span><br><span class="line">	__count_vm_events(PGFREE, <span class="number">1</span> &lt;&lt; order);</span><br><span class="line">	free_one_page(page_zone(page), page, pfn, order, migratetype);</span><br><span class="line">	local_irq_restore(flags);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">free_one_page</span><span class="params">(struct zone *zone,</span></span></span><br><span class="line"><span class="function"><span class="params">				struct page *page, <span class="keyword">unsigned</span> <span class="keyword">long</span> pfn,</span></span></span><br><span class="line"><span class="function"><span class="params">				<span class="keyword">unsigned</span> <span class="keyword">int</span> order,</span></span></span><br><span class="line"><span class="function"><span class="params">				<span class="keyword">int</span> migratetype)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	spin_lock(&amp;zone-&gt;lock);</span><br><span class="line">	<span class="keyword">if</span> (unlikely(has_isolate_pageblock(zone) ||</span><br><span class="line">		is_migrate_isolate(migratetype))) &#123;</span><br><span class="line">		migratetype = get_pfnblock_migratetype(page, pfn);</span><br><span class="line">	&#125;</span><br><span class="line">	__free_one_page(page, pfn, zone, order, migratetype);</span><br><span class="line">	spin_unlock(&amp;zone-&gt;lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="free-one-page"><a href="#free-one-page" class="headerlink" title="__free_one_page()"></a>__free_one_page()</h3><p>下面我们来看看<code>__free_one_page()</code>这个函数，</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Freeing function for a buddy system allocator.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * The concept of a buddy system is to maintain direct-mapped table</span></span><br><span class="line"><span class="comment"> * (containing bit values) for memory blocks of various &quot;orders&quot;.</span></span><br><span class="line"><span class="comment"> * The bottom level table contains the map for the smallest allocatable</span></span><br><span class="line"><span class="comment"> * units of memory (here, pages), and each level above it describes</span></span><br><span class="line"><span class="comment"> * pairs of units from the levels below, hence, &quot;buddies&quot;.</span></span><br><span class="line"><span class="comment"> * At a high level, all that happens here is marking the table entry</span></span><br><span class="line"><span class="comment"> * at the bottom level available, and propagating the changes upward</span></span><br><span class="line"><span class="comment"> * as necessary, plus some accounting needed to play nicely with other</span></span><br><span class="line"><span class="comment"> * parts of the VM system.</span></span><br><span class="line"><span class="comment"> * At each level, we keep a list of pages, which are heads of continuous</span></span><br><span class="line"><span class="comment"> * free pages of length of (1 &lt;&lt; order) and marked with PageBuddy.</span></span><br><span class="line"><span class="comment"> * Page&#x27;s order is recorded in page_private(page) field.</span></span><br><span class="line"><span class="comment"> * So when we are allocating or freeing one, we can derive the state of the</span></span><br><span class="line"><span class="comment"> * other.  That is, if we allocate a small block, and both were</span></span><br><span class="line"><span class="comment"> * free, the remainder of the region must be split into blocks.</span></span><br><span class="line"><span class="comment"> * If a block is freed, and its buddy is also free, then this</span></span><br><span class="line"><span class="comment"> * triggers coalescing into a block of larger size.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * -- nyc</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">void</span> __free_one_page(struct page *page,</span><br><span class="line">		<span class="keyword">unsigned</span> <span class="keyword">long</span> pfn,</span><br><span class="line">		struct zone *zone, <span class="keyword">unsigned</span> <span class="keyword">int</span> order,</span><br><span class="line">		<span class="keyword">int</span> migratetype)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> combined_pfn;</span><br><span class="line">	<span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="title">uninitialized_var</span><span class="params">(buddy_pfn)</span></span>;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">buddy</span>;</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> max_order;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">capture_control</span> *<span class="title">capc</span> =</span> task_capc(zone);</span><br><span class="line">    <span class="comment">// 大部分情况pageblock_order + 1 &lt;= MAX_ORDER</span></span><br><span class="line">	max_order = <span class="keyword">min_t</span>(<span class="keyword">unsigned</span> <span class="keyword">int</span>, MAX_ORDER, pageblock_order + <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">	VM_BUG_ON(!zone_is_initialized(zone));</span><br><span class="line">	VM_BUG_ON_PAGE(page-&gt;flags &amp; PAGE_FLAGS_CHECK_AT_PREP, page);</span><br><span class="line"></span><br><span class="line">	VM_BUG_ON(migratetype == <span class="number">-1</span>);</span><br><span class="line">	<span class="keyword">if</span> (likely(!is_migrate_isolate(migratetype)))</span><br><span class="line">		__mod_zone_freepage_state(zone, <span class="number">1</span> &lt;&lt; order, migratetype);</span><br><span class="line"></span><br><span class="line">	VM_BUG_ON_PAGE(pfn &amp; ((<span class="number">1</span> &lt;&lt; order) - <span class="number">1</span>), page);</span><br><span class="line">	VM_BUG_ON_PAGE(bad_range(zone, page), page);</span><br><span class="line"></span><br><span class="line">continue_merging:</span><br><span class="line">	<span class="keyword">while</span> (order &lt; max_order - <span class="number">1</span>) &#123;</span><br><span class="line">		<span class="keyword">if</span> (compaction_capture(capc, page, order, migratetype)) &#123;</span><br><span class="line">			__mod_zone_freepage_state(zone, -(<span class="number">1</span> &lt;&lt; order),</span><br><span class="line">								migratetype);</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	    <span class="comment">// ------------------------------------------------------------- (1)	</span></span><br><span class="line">	    <span class="comment">// page_pfn ^ (1 &lt;&lt; order)</span></span><br><span class="line">		buddy_pfn = __find_buddy_pfn(pfn, order);</span><br><span class="line">		buddy = page + (buddy_pfn - pfn);</span><br><span class="line">		<span class="comment">// pfn_valid_within()在没有没有定义CONFIG_HOLES_IN_ZONE时返回1</span></span><br><span class="line">		<span class="keyword">if</span> (!pfn_valid_within(buddy_pfn))</span><br><span class="line">			<span class="keyword">goto</span> done_merging;</span><br><span class="line">		<span class="comment">// 确保buddy的zone, order和page的一样；确保buddy不在hole；确保buddy在buddy system(没有被分配出去)</span></span><br><span class="line">		<span class="keyword">if</span> (!page_is_buddy(page, buddy, order))</span><br><span class="line">			<span class="keyword">goto</span> done_merging;</span><br><span class="line">		<span class="comment">/*</span></span><br><span class="line"><span class="comment">		 * Our buddy is free or it is CONFIG_DEBUG_PAGEALLOC guard page,</span></span><br><span class="line"><span class="comment">		 * merge with it and move up one order.</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		<span class="keyword">if</span> (page_is_guard(buddy))</span><br><span class="line">			clear_page_guard(zone, buddy, order, migratetype);</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">		    <span class="comment">// 将buddy从相应的free_list中取下</span></span><br><span class="line">			del_page_from_free_area(buddy, &amp;zone-&gt;free_area[order]);</span><br><span class="line">		<span class="comment">// 获取合并后的pfn	</span></span><br><span class="line">		combined_pfn = buddy_pfn &amp; pfn;</span><br><span class="line">		<span class="comment">// 获取合并后的页块 	</span></span><br><span class="line">		page = page + (combined_pfn - pfn);</span><br><span class="line">		pfn = combined_pfn;</span><br><span class="line">		<span class="comment">// order加1，继续向上合并	</span></span><br><span class="line">		order++;</span><br><span class="line">		<span class="comment">// ------------------------------------------------------------- (1)</span></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// ----------------------------------------------------------------- (2)</span></span><br><span class="line">	<span class="keyword">if</span> (max_order &lt; MAX_ORDER) &#123;</span><br><span class="line">		<span class="comment">/* If we are here, it means order is &gt;= pageblock_order.</span></span><br><span class="line"><span class="comment">		 * We want to prevent merge between freepages on isolate</span></span><br><span class="line"><span class="comment">		 * pageblock and normal pageblock. Without this, pageblock</span></span><br><span class="line"><span class="comment">		 * isolation could cause incorrect freepage or CMA accounting.</span></span><br><span class="line"><span class="comment">		 *</span></span><br><span class="line"><span class="comment">		 * We don&#x27;t want to hit this code for the more frequent</span></span><br><span class="line"><span class="comment">		 * low-order merging.</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		<span class="keyword">if</span> (unlikely(has_isolate_pageblock(zone))) &#123;</span><br><span class="line">			<span class="keyword">int</span> buddy_mt;</span><br><span class="line"></span><br><span class="line">			buddy_pfn = __find_buddy_pfn(pfn, order);</span><br><span class="line">			buddy = page + (buddy_pfn - pfn);</span><br><span class="line">			buddy_mt = get_pageblock_migratetype(buddy);</span><br><span class="line"></span><br><span class="line">			<span class="keyword">if</span> (migratetype != buddy_mt</span><br><span class="line">					&amp;&amp; (is_migrate_isolate(migratetype) ||</span><br><span class="line">						is_migrate_isolate(buddy_mt)))</span><br><span class="line">				<span class="keyword">goto</span> done_merging;</span><br><span class="line">		&#125;</span><br><span class="line">		max_order++;</span><br><span class="line">		<span class="keyword">goto</span> continue_merging;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">done_merging:</span><br><span class="line">	set_page_order(page, order);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// ----------------------------------------------------------------- (3)</span></span><br><span class="line">	<span class="comment">// 这种情况出现在上面page_is_buddy()不满足条件的情况</span></span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * If this is not the largest possible page, check if the buddy</span></span><br><span class="line"><span class="comment">	 * of the next-highest order is free. If it is, it&#x27;s possible</span></span><br><span class="line"><span class="comment">	 * that pages are being freed that will coalesce soon. In case,</span></span><br><span class="line"><span class="comment">	 * that is happening, add the free page to the tail of the list</span></span><br><span class="line"><span class="comment">	 * so it&#x27;s less likely to be used soon and more likely to be merged</span></span><br><span class="line"><span class="comment">	 * as a higher order page</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="keyword">if</span> ((order &lt; MAX_ORDER<span class="number">-2</span>) &amp;&amp; pfn_valid_within(buddy_pfn) &amp;&amp; !is_shuffle_order(order)) &#123;</span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">higher_page</span>, *<span class="title">higher_buddy</span>;</span></span><br><span class="line">		combined_pfn = buddy_pfn &amp; pfn;</span><br><span class="line">		higher_page = page + (combined_pfn - pfn);</span><br><span class="line">		<span class="comment">// 寻找更上以及的伙伴</span></span><br><span class="line">		buddy_pfn = __find_buddy_pfn(combined_pfn, order + <span class="number">1</span>);</span><br><span class="line">		higher_buddy = higher_page + (buddy_pfn - combined_pfn);</span><br><span class="line">		<span class="keyword">if</span> (pfn_valid_within(buddy_pfn) &amp;&amp;</span><br><span class="line">		    page_is_buddy(higher_page, higher_buddy, order + <span class="number">1</span>)) &#123;</span><br><span class="line">			add_to_free_area_tail(page, &amp;zone-&gt;free_area[order],</span><br><span class="line">					      migratetype);</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// ----------------------------------------------------------------- (4)</span></span><br><span class="line">	<span class="comment">// 是否进行随机添加，随机添加指的是随机在free_list头或者尾进行插入</span></span><br><span class="line">	<span class="keyword">if</span> (is_shuffle_order(order))</span><br><span class="line">		add_to_free_area_random(page, &amp;zone-&gt;free_area[order], migratetype);</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		add_to_free_area(page, &amp;zone-&gt;free_area[order], migratetype);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>看上面的注释基本已经能理解伙伴系统内存的释放了，这里我再简单解释下，外加给个例子，<br>(1) 这部分是伙伴系统的核心部分，通过寻找伙伴、合并、升阶，直到找不到有效伙伴；<br>(2) 这部分不清楚，发生在<code>pageblock_order + 1 &lt;= MAX_ORDER</code>的情况；<br>(3) 这部分适用于 i) 页块在上一级<code>order</code>找不到伙伴；ii) 但在上上一级<code>order</code>能找到其伙伴（其伙伴已经合并到这一级了）。在这种情况下，我们将当前页块插入到<code>free_list</code>的尾部，这样它就不会在短期内被分配出去。如果上上一级的页块裂开了，那么就会和这个页块进行合并；<br>(4) 判断是否将合并的页块随机插入<code>free_list</code>的首或者尾。</p>
+<p>下面看看伙伴系统释放的例子，</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// case 1 - 可以直接合并到最高order</span></span><br><span class="line"><span class="comment">// ---------------------</span></span><br><span class="line"><span class="comment">// [8,9,10,11,12,13,14,15] </span></span><br><span class="line"><span class="comment">// [4,5,6,7][16,17,18,19]</span></span><br><span class="line"><span class="comment">// [0,1][20,21]</span></span><br><span class="line"><span class="comment">// free([2,3])</span></span><br><span class="line"><span class="comment">// 1) 寻找2的buddy, buddy_pfn = 2 ^ (1 &lt;&lt; 1) = 0</span></span><br><span class="line"><span class="comment">// 2) 获取combined_pfn = 0 &amp; 2 = 0</span></span><br><span class="line"><span class="comment">// 3) order++, 合并成[0,1,2,3]</span></span><br><span class="line"><span class="comment">// 4) 寻找0的buddy, buddy_pfn = 0 ^ (1 &lt;&lt; 2) = 4</span></span><br><span class="line"><span class="comment">// 5) 获取combined_pfn = 0 &amp; 4 = 0</span></span><br><span class="line"><span class="comment">// 6) order++, 合并成[0,1,2,3,4,5,6,7]</span></span><br><span class="line"><span class="comment">// 继续重复1) - 3)直到最后合并成[0 - 15]</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// case 2 - 不能合并到最高order </span></span><br><span class="line"><span class="comment">// ---------------------</span></span><br><span class="line"><span class="comment">// [32,33,34,35,36,37,38,39] </span></span><br><span class="line"><span class="comment">// [4,5,6,7][16,17,18,19]</span></span><br><span class="line"><span class="comment">// [0,1][20,21]</span></span><br><span class="line"><span class="comment">// 这种情况最后只能合并到[0 - 7]，不能再向上合并了</span></span><br></pre></td></tr></table></figure>
+<p>上面讲的都是伙伴系统如何进行内存释放的，下面看看<code>pcplist</code>那部分是如何进行内存释放的。</p>
+<h3 id="free-unref-page"><a href="#free-unref-page" class="headerlink" title="free_unref_page()"></a>free_unref_page()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Free a 0-order page</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">free_unref_page</span><span class="params">(struct page *page)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> flags;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> pfn = page_to_pfn(page);</span><br><span class="line">	<span class="comment">// 对page做一些处理，最后会调用free_pages_prepare()</span></span><br><span class="line">	<span class="keyword">if</span> (!free_unref_page_prepare(page, pfn))</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">	local_irq_save(flags);</span><br><span class="line">	free_unref_page_commit(page, pfn);</span><br><span class="line">	local_irq_restore(flags);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个函数基本就是一个封装函数，除了对<code>page</code>进行一些预处理外，最核心的部分就是调用<code>free_unref_page_commit()</code>函数。下面我们来看看这个函数，</p>
+<h3 id="free-unref-page-commit"><a href="#free-unref-page-commit" class="headerlink" title="free_unref_page_commit()"></a>free_unref_page_commit()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">free_unref_page_commit</span><span class="params">(struct page *page, <span class="keyword">unsigned</span> <span class="keyword">long</span> pfn)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">zone</span> *<span class="title">zone</span> =</span> page_zone(page);</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">per_cpu_pages</span> *<span class="title">pcp</span>;</span></span><br><span class="line">	<span class="keyword">int</span> migratetype;</span><br><span class="line"></span><br><span class="line">	migratetype = get_pcppage_migratetype(page);</span><br><span class="line">	__count_vm_event(PGFREE);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * We only track unmovable, reclaimable and movable on pcp lists.</span></span><br><span class="line"><span class="comment">	 * Free ISOLATE pages back to the allocator because they are being</span></span><br><span class="line"><span class="comment">	 * offlined but treat HIGHATOMIC as movable pages so we can get those</span></span><br><span class="line"><span class="comment">	 * areas back if necessary. Otherwise, we may have to free</span></span><br><span class="line"><span class="comment">	 * excessively into the page allocator</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="keyword">if</span> (migratetype &gt;= MIGRATE_PCPTYPES) &#123;</span><br><span class="line">		<span class="comment">// 这种情况下直接用伙伴系统完成内存的释放 - 伙伴系统也可以对order == 0的情况进行处理</span></span><br><span class="line">		<span class="keyword">if</span> (unlikely(is_migrate_isolate(migratetype))) &#123;</span><br><span class="line">			free_one_page(zone, page, pfn, <span class="number">0</span>, migratetype);</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		migratetype = MIGRATE_MOVABLE;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 直接将页放回pcplist</span></span><br><span class="line">	pcp = &amp;this_cpu_ptr(zone-&gt;pageset)-&gt;pcp;</span><br><span class="line">	list_add(&amp;page-&gt;lru, &amp;pcp-&gt;lists[migratetype]);</span><br><span class="line">	pcp-&gt;count++;</span><br><span class="line">    <span class="comment">// pcplist中的页太多了，我们需要释放部分回伙伴系统	</span></span><br><span class="line">	<span class="keyword">if</span> (pcp-&gt;count &gt;= pcp-&gt;high) &#123;</span><br><span class="line">		<span class="keyword">unsigned</span> <span class="keyword">long</span> batch = READ_ONCE(pcp-&gt;batch);</span><br><span class="line">		free_pcppages_bulk(zone, batch, pcp);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面这个函数很简单也很直接，唯一需要额外关注的就是<code>free_pcppages_bulk()</code>这个函数，接下来看看这个函数吧。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/page_alloc.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Frees a number of pages from the PCP lists</span></span><br><span class="line"><span class="comment"> * Assumes all pages on list are in same zone, and of same order.</span></span><br><span class="line"><span class="comment"> * count is the number of pages to free.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * If the zone was previously in an &quot;all pages pinned&quot; state then look to</span></span><br><span class="line"><span class="comment"> * see if this freeing clears that state.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * And clear the zone&#x27;s pages_scanned counter, to hold off the &quot;all pages are</span></span><br><span class="line"><span class="comment"> * pinned&quot; detection logic.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">free_pcppages_bulk</span><span class="params">(struct zone *zone, <span class="keyword">int</span> count,</span></span></span><br><span class="line"><span class="function"><span class="params">					struct per_cpu_pages *pcp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> migratetype = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">int</span> batch_free = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">int</span> prefetch_nr = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">bool</span> isolated_pageblocks;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">page</span>, *<span class="title">tmp</span>;</span></span><br><span class="line">	LIST_HEAD(head);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ------------------------------------------------------ (1)</span></span><br><span class="line">	<span class="keyword">while</span> (count) &#123;</span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">list</span>;</span></span><br><span class="line"></span><br><span class="line">		<span class="comment">/*</span></span><br><span class="line"><span class="comment">		 * Remove pages from lists in a round-robin fashion. A</span></span><br><span class="line"><span class="comment">		 * batch_free count is maintained that is incremented when an</span></span><br><span class="line"><span class="comment">		 * empty list is encountered.  This is so more pages are freed</span></span><br><span class="line"><span class="comment">		 * off fuller lists instead of spinning excessively around empty</span></span><br><span class="line"><span class="comment">		 * lists</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		<span class="keyword">do</span> &#123;</span><br><span class="line">			batch_free++;</span><br><span class="line">			<span class="keyword">if</span> (++migratetype == MIGRATE_PCPTYPES)</span><br><span class="line">				migratetype = <span class="number">0</span>;</span><br><span class="line">			<span class="built_in">list</span> = &amp;pcp-&gt;lists[migratetype];</span><br><span class="line">		&#125; <span class="keyword">while</span> (list_empty(<span class="built_in">list</span>));</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* This is the only non-empty list. Free them all. */</span></span><br><span class="line">		<span class="keyword">if</span> (batch_free == MIGRATE_PCPTYPES)</span><br><span class="line">			batch_free = count;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">do</span> &#123;</span><br><span class="line">			page = list_last_entry(<span class="built_in">list</span>, struct page, lru);</span><br><span class="line">			<span class="comment">/* must delete to avoid corrupting pcp list */</span></span><br><span class="line">			list_del(&amp;page-&gt;lru);</span><br><span class="line">			pcp-&gt;count--;</span><br><span class="line"></span><br><span class="line">			<span class="keyword">if</span> (bulkfree_pcp_prepare(page))</span><br><span class="line">				<span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">			list_add_tail(&amp;page-&gt;lru, &amp;head);</span><br><span class="line"></span><br><span class="line">			<span class="comment">/*</span></span><br><span class="line"><span class="comment">			 * We are going to put the page back to the global</span></span><br><span class="line"><span class="comment">			 * pool, prefetch its buddy to speed up later access</span></span><br><span class="line"><span class="comment">			 * under zone-&gt;lock. It is believed the overhead of</span></span><br><span class="line"><span class="comment">			 * an additional test and calculating buddy_pfn here</span></span><br><span class="line"><span class="comment">			 * can be offset by reduced memory latency later. To</span></span><br><span class="line"><span class="comment">			 * avoid excessive prefetching due to large count, only</span></span><br><span class="line"><span class="comment">			 * prefetch buddy for the first pcp-&gt;batch nr of pages.</span></span><br><span class="line"><span class="comment">			 */</span></span><br><span class="line">			<span class="keyword">if</span> (prefetch_nr++ &lt; pcp-&gt;batch)</span><br><span class="line">				prefetch_buddy(page);</span><br><span class="line">		&#125; <span class="keyword">while</span> (--count &amp;&amp; --batch_free &amp;&amp; !list_empty(<span class="built_in">list</span>));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	spin_lock(&amp;zone-&gt;lock);</span><br><span class="line">	isolated_pageblocks = has_isolate_pageblock(zone);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * Use safe version since after __free_one_page(),</span></span><br><span class="line"><span class="comment">	 * page-&gt;lru.next will not point to original list.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">    <span class="comment">// ------------------------------------------------------ (2)</span></span><br><span class="line">	list_for_each_entry_safe(page, tmp, &amp;head, lru) &#123;</span><br><span class="line">		<span class="keyword">int</span> mt = get_pcppage_migratetype(page);</span><br><span class="line">		<span class="comment">/* MIGRATE_ISOLATE page should not go to pcplists */</span></span><br><span class="line">		VM_BUG_ON_PAGE(is_migrate_isolate(mt), page);</span><br><span class="line">		<span class="comment">/* Pageblock could have been isolated meanwhile */</span></span><br><span class="line">		<span class="keyword">if</span> (unlikely(isolated_pageblocks))</span><br><span class="line">			mt = get_pageblock_migratetype(page);</span><br><span class="line"></span><br><span class="line">		__free_one_page(page, page_to_pfn(page), zone, <span class="number">0</span>, mt);</span><br><span class="line">		trace_mm_page_pcpu_drain(page, <span class="number">0</span>, mt);</span><br><span class="line">	&#125;</span><br><span class="line">	spin_unlock(&amp;zone-&gt;lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个函数还是比较简单的，我把它分为两部分，<br>(1) 用<code>round-robin</code>的方式遍历所有不为空的<code>migratetype</code>，将页从原来的<code>free_list</code>中移除并添加进一个临时的<code>list</code>；<br>(2) 所有需要释放回伙伴系统的页都在<code>list</code>中了，根据<code>migratetype</code>的不同，将它们释放回伙伴系统(<code>order == 0</code>)。</p>
+<h2 id="实例分析-Memblock释放内存空间"><a href="#实例分析-Memblock释放内存空间" class="headerlink" title="实例分析 - Memblock释放内存空间"></a>实例分析 - Memblock释放内存空间</h2><p>我们现在来看看之前留下的一个坑，<code>Memblock</code>是如何将内存空间还给伙伴系统的。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ./mm/memblock.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="comment">// __free_pages_memory()</span></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">void</span> __init __free_pages_memory(<span class="keyword">unsigned</span> <span class="keyword">long</span> start, <span class="keyword">unsigned</span> <span class="keyword">long</span> end)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">int</span> order;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (start &lt; end) &#123;</span><br><span class="line">        order = min(MAX_ORDER - <span class="number">1UL</span>, __ffs(start));</span><br><span class="line">	    <span class="comment">// 尽量用大的order来释放内存空间 </span></span><br><span class="line">        <span class="keyword">while</span> (start + (<span class="number">1UL</span> &lt;&lt; order) &gt; end)</span><br><span class="line">            order--;</span><br><span class="line"></span><br><span class="line">        memblock_free_pages(pfn_to_page(start), start, order);</span><br><span class="line"></span><br><span class="line">        start += (<span class="number">1UL</span> &lt;&lt; order);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="comment">// memblock_free_pages()</span></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> __init <span class="title">memblock_free_pages</span><span class="params">(struct page *page, <span class="keyword">unsigned</span> <span class="keyword">long</span> pfn,</span></span></span><br><span class="line"><span class="function"><span class="params">							<span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (early_page_uninitialised(pfn))</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	__free_pages_core(page, order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="comment">// __free_pages_core()</span></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="keyword">void</span> __free_pages_core(struct page *page, <span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> nr_pages = <span class="number">1</span> &lt;&lt; order;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">page</span> *<span class="title">p</span> =</span> page;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> loop;</span><br><span class="line"></span><br><span class="line">	prefetchw(p);</span><br><span class="line">	<span class="keyword">for</span> (loop = <span class="number">0</span>; loop &lt; (nr_pages - <span class="number">1</span>); loop++, p++) &#123;</span><br><span class="line">		prefetchw(p + <span class="number">1</span>);</span><br><span class="line">		__ClearPageReserved(p);</span><br><span class="line">		set_page_count(p, <span class="number">0</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	__ClearPageReserved(p);</span><br><span class="line">	set_page_count(p, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 更新zone中伙伴系统管理页的数量	</span></span><br><span class="line">	atomic_long_add(nr_pages, &amp;page_zone(page)-&gt;managed_pages);</span><br><span class="line">	set_page_refcounted(page);</span><br><span class="line">	__free_pages(page, order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="comment">// __free_pages()</span></span><br><span class="line"><span class="comment">// ################################################################################</span></span><br><span class="line"><span class="keyword">void</span> __free_pages(struct page *page, <span class="keyword">unsigned</span> <span class="keyword">int</span> order)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (put_page_testzero(page))</span><br><span class="line">	    <span class="comment">// 至此，回到上面&quot;内存的释放&quot;部分的内容</span></span><br><span class="line">		free_the_page(page, order);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这部分代码很容易理解，唯一留下的疑问就是：<code>Memblock</code>中的这些页，它们的<code>migratetype</code>是什么？是在哪里定义的？以后如果我找到了我会回来更新这个疑问。除此之外，这部分代码直接读就行了。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/e67718116b82?v=1675474528071">深度剖析 Linux 伙伴系统的设计与实现（上）</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/aea0d818b040">深度剖析 Linux 伙伴系统的设计与实现（下）</a></li>
+</ol>
+
+    </article>
+    <!-- license -->
+    
+    <!-- paginator -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href="/2023/11/25/Untitled/" title="">
+                    <div class="nextTitle">[Untitled Post]</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href="/2023/06/03/%E3%80%90LM11%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AF%87/" title="【LM11】伙伴系统内存分配篇">
+                    <div class="prevTitle">【LM11】伙伴系统内存分配篇</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- comment -->
+    
+        <div class="post-comment">
+            <!-- 来必力 City 版安装代码 -->
+
+
+            
+
+            
+
+            
+
+            <!-- utteranc评论 -->
+
+
+            <!-- partial('_partial/comment/changyan') -->
+            <!--PC版-->
+
+
+            
+            
+
+            
+
+        </div>
+    
+    <!-- timeliness note -->
+    <!-- idea from: https://hexo.fluid-dev.com/posts/hexo-injector/#%E6%96%87%E7%AB%A0%E6%97%B6%E6%95%88%E6%80%A7%E6%8F%90%E7%A4%BA -->
+    
+    <!-- Mathjax -->
+    
+</main>
+
+                <!-- profile -->
+                
+            </div>
+            <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+        <div class="social">
+            
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+
+        </div>
+    
+    <!-- powered by Hexo  -->
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span>
+    </div>
+    <!-- website approve for Chinese user -->
+    
+    <!-- 不蒜子  -->
+    
+        <div class="busuanzi-container">
+            
+             
+                <span id="busuanzi_container_site_pv">PV: <span id="busuanzi_value_site_pv"></span> :)</span>
+            
+        </div>
+    	
+</footer>
+
+        </div>
+        <!-- toc -->
+        
+            <div class="toc-wrapper toc-wrapper-loding" style=
+
+
+
+
+
+
+
+    top:40vh;
+
+>
+                <div class="toc-catalog">
+                    <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+                </div>
+                <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#rmqueue-fallback"><span class="toc-number">1.</span> <span class="toc-text">__rmqueue_fallback()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#pcplist"><span class="toc-number">2.</span> <span class="toc-text">pcplist</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#rmqueue-pcplist"><span class="toc-number">2.1.</span> <span class="toc-text">rmqueue_pcplist()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#rmqueue-pcplist-1"><span class="toc-number">2.2.</span> <span class="toc-text">__rmqueue_pcplist()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#rmqueue-bulk"><span class="toc-number">2.3.</span> <span class="toc-text">rmqueue_bulk()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E7%9A%84%E9%87%8A%E6%94%BE"><span class="toc-number">3.</span> <span class="toc-text">内存的释放</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#free-pages-ok"><span class="toc-number">3.1.</span> <span class="toc-text">__free_pages_ok()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#free-one-page"><span class="toc-number">3.2.</span> <span class="toc-text">__free_one_page()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#free-unref-page"><span class="toc-number">3.3.</span> <span class="toc-text">free_unref_page()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#free-unref-page-commit"><span class="toc-number">3.4.</span> <span class="toc-text">free_unref_page_commit()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B%E5%88%86%E6%9E%90-Memblock%E9%87%8A%E6%94%BE%E5%86%85%E5%AD%98%E7%A9%BA%E9%97%B4"><span class="toc-number">4.</span> <span class="toc-text">实例分析 - Memblock释放内存空间</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">5.</span> <span class="toc-text">参考资料</span></a></li></ol>
+            </div>
+        
+        <!-- sidebar -->
+        <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+        <div class="sidebar-panel-archives">
+    <!-- 在 ejs 中将 archive 按照时间排序 -->
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 15
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+        
+            
+            
+            <div class="archive-year"> 2022 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">12/13</span>
+            <a class="archive-post-title" href="/2022/12/13/%E3%80%90LM01%E3%80%91ARMv8%20MMU%E7%9A%84%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">【LM01】ARMv8 MMU的基础知识</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> Invalid date </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">Invalid date</span>
+            <a class="archive-post-title" href="/2023/11/25/Untitled/">[Untitled Post]</a>
+        </li>
+    
+        
+            
+            
+                
+                </ul>
+            
+            <div class="archive-year"> 2023 </div>
+            <ul class="year-list">
+            
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/01</span>
+            <a class="archive-post-title" href="/2023/07/01/%E3%80%90LM12%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E9%87%8A%E6%94%BE%E7%AF%87/">【LM12】伙伴系统内存释放篇</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/03</span>
+            <a class="archive-post-title" href="/2023/06/03/%E3%80%90LM11%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AF%87/">【LM11】伙伴系统内存分配篇</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/10</span>
+            <a class="archive-post-title" href="/2023/05/10/%E3%80%90LM10%E3%80%91%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF/">【LM10】伙伴系统基本信息</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/02</span>
+            <a class="archive-post-title" href="/2023/05/02/%E3%80%90%E6%89%93%E8%84%B8%E7%B3%BB%E5%88%97%E3%80%912022%E6%8A%95%E8%B5%84%E7%AD%96%E7%AD%96%E7%95%A5/">【打脸系列】2022投资策策略</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/25</span>
+            <a class="archive-post-title" href="/2023/04/25/%E3%80%90LM09%E3%80%91Memblock%E5%88%B0%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%88%87%E6%8D%A2/">【LM09】Memblock到伙伴系统的切换</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/10</span>
+            <a class="archive-post-title" href="/2023/04/10/%E3%80%90LM08%E3%80%91Node%E5%92%8CZone%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96/">【LM08】Node和Zone的初始化</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/29</span>
+            <a class="archive-post-title" href="/2023/03/29/%E3%80%90LM07%E3%80%91%E9%87%8D%E6%96%B0%E5%9B%9E%E9%A1%BE%E5%86%85%E5%AD%98%E5%88%9D%E5%A7%8B%E5%8C%96/">【LM07】重新回顾内存初始化</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">03/12</span>
+            <a class="archive-post-title" href="/2023/03/12/%E3%80%90LM06%E3%80%91bootmem-init()%E5%92%8CLinux%E7%9A%84%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">【LM06】bootmem_init()和Linux的内存模型</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/12</span>
+            <a class="archive-post-title" href="/2023/02/12/%E3%80%90LM05%E3%80%91paging-init()%E4%BB%A5%E5%8F%8A%E5%86%85%E5%AD%98%E7%9A%84%E5%B8%83%E5%B1%80/">【LM05】paging_init()以及内存的布局</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">02/02</span>
+            <a class="archive-post-title" href="/2023/02/02/%E3%80%90LM04%E3%80%91Memblock%E5%8F%8A%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">【LM04】Memblock及源码分析</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/15</span>
+            <a class="archive-post-title" href="/2023/01/15/%E3%80%90LM03%E3%80%91FIXMAP%E5%92%8C%E7%9B%B8%E5%85%B3%E9%A1%B5%E8%A1%A8%E7%9A%84%E5%88%9B%E5%BB%BA/">【LM03】FIXMAP和相关页表的创建</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/05</span>
+            <a class="archive-post-title" href="/2023/01/05/%E3%80%90LM02%E3%80%91ARMv8%20MMU%E5%92%8CLinux%E7%9A%84%E5%90%AF%E5%8A%A8/">【LM02】ARMv8 MMU和Linux的启动</a>
+        </li>
+    
+        
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/03</span>
+            <a class="archive-post-title" href="/2023/01/03/%E9%87%8D%E6%96%B0%E5%87%BA%E5%8F%91/">重新出发</a>
+        </li>
+    
+    </div>
+</div>
+
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+        
+            <span class="sidebar-tag-name" data-tags="Linux内核">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内核
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux_5_0">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux_5_0
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="ARMv8_64">
+                <span class="iconfont-archer">&#xe606;</span>
+                ARMv8_64
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="Linux内存管理">
+                <span class="iconfont-archer">&#xe606;</span>
+                Linux内存管理
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="美股">
+                <span class="iconfont-archer">&#xe606;</span>
+                美股
+            </span>
+        
+            <span class="sidebar-tag-name" data-tags="投资理财">
+                <span class="iconfont-archer">&#xe606;</span>
+                投资理财
+            </span>
+        
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+        缺失模块，请参考主题文档进行安装配置：https://github.com/fi3ework/hexo-theme-archer#%E5%AE%89%E8%A3%85%E4%B8%BB%E9%A2%98
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="硬核技术">
+            <span class="iconfont-archer">&#xe60a;</span>
+            硬核技术
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="股海浮沉">
+            <span class="iconfont-archer">&#xe60a;</span>
+            股海浮沉
+        </span>
+    
+        <span class="sidebar-category-name" data-categories="个人随笔">
+            <span class="iconfont-archer">&#xe60a;</span>
+            个人随笔
+        </span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+
+    </div>
+</div>
+
+        <!-- site-meta -->
+        <script>
+    var siteMetaRoot = "/"
+    if (siteMetaRoot === "undefined") {
+        siteMetaRoot = '/'
+    }
+    var siteMeta = {
+        url: "http://example.com",
+        root: siteMetaRoot,
+        author: "John Doe"
+    }
+</script>
+
+        <!-- import experimental options here -->
+        <!-- Custom Font -->
+
+
+        <!-- main func -->
+        <script src="/scripts/main.js?v=20211217"></script>
+        <!-- dark mode -->
+        <script src="/scripts/dark.js?v=20211217"></script>
+        <!-- fancybox -->
+        <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" defer></script>
+        <!-- algolia -->
+        
+        <!-- busuanzi -->
+        
+            <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+        
+        <!-- CNZZ -->
+        
+        <!-- async load share.js -->
+        
+            <script src="/scripts/share.js?v=20211217" async></script>
+        
+        <!-- mermaid -->
+        
+    </body>
+</html>
